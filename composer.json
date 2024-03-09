@@ -16,5 +16,8 @@
                 "LucaPon\\StatamicContentBackup\\ServiceProvider"
             ]
         }
+    },
+    "require": {
+        "ext-zip": "*"
     }
 }

@@ -51,7 +51,7 @@ class ServiceProvider extends AddonServiceProvider
                 ->group(function () {
                     Route::get('/', [ContentBackupController::class, 'index'])->name('index');
                     Route::get('/backup', [ContentBackupController::class, 'downloadBackup'])->name('backup');
-                    Route::get('/restore', [ContentBackupController::class, 'restoreBackup'])->name('restore');
+                    Route::post('/restore', [ContentBackupController::class, 'restoreBackup'])->name('restore');
                 });
         });
     }

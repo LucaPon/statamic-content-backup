@@ -12,13 +12,4 @@ return [
         '/public/assets',
     ],
 
-    /*
-    |
-    | Files or folders you want to exclude from your backup
-    |
-    */
-    'exclude_files' => [
-        'content/taxonomies'
-    ],
-
 ];
