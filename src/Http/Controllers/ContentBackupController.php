@@ -3,6 +3,11 @@
 namespace LucaPon\StatamicContentBackup\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use LucaPon\StatamicContentBackup\Http\Services\BackupService;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Statamic\Facades\CP\Toast;
 use Statamic\Http\Controllers\Controller;
 use ZipArchive;
@@ -11,6 +16,14 @@ use Illuminate\Support\Facades\File;
 
 class ContentBackupController extends Controller
 {
+
+    protected BackupService $backupService;
+
+    public function __construct(BackupService $backupService)
+    {
+        $this->backupService = $backupService;
+    }
+
     public function index(Request $request)
     {
         return view('statamic-content-backup::index');
@@ -18,46 +31,37 @@ class ContentBackupController extends Controller
 
     public function downloadBackup(Request $request)
     {
-        $includeFiles = config()->get('statamic-content-backup.include_files');
-        $zipFileName = date('Ymd') . '_' . env('APP_NAME') . '.zip';
-        $zip = new ZipArchive();
-        $zip->open(storage_path($zipFileName), ZipArchive::CREATE | ZipArchive::OVERWRITE);
-
-        foreach ($includeFiles as $file) {
-            $this->addToZip(base_path($file), $zip);
-        }
-
-        if(!$zip->close()){
+        try {
+            $backupFile = $this->backupService->createBackup();
+        }catch (\Exception $e) {
             Toast::error('Error creating backup');
             return redirect()->back();
         }
 
-        return response()->download(storage_path($zipFileName))->deleteFileAfterSend(true);
+        return response()->download($backupFile)->deleteFileAfterSend(true);
     }
 
-    private function addToZip($file, $zip): void
-    {
-        if (!file_exists($file)) {
-            return;
-        }
-
-        if (is_file($file)) {
-            $zip->addFile($file, str_replace(base_path(), '', $file));
-        } elseif (is_dir($file)) {
-            $files = File::allFiles($file, true);
-            foreach ($files as $file) {
-                $this->addToZip($file, $zip);
-            }
-        }
-    }
 
     public function restoreBackup(Request $request)
     {
-        $validated = $request->validate([
-            'backup' => 'required|file|mimes:zip'
+
+        $validator = Validator::make($request->all(), [
+            'restoreInput' => 'required|file|mimes:zip'
         ]);
-        
-        $includeFiles = config()->get('statamic-content-backup.include_files');
+
+        if($validator->fails()) {
+            Toast::error('Error restoring backup');
+            return redirect()->back();
+        }
+
+        try {
+            $backupFile = $validator->validated()['restoreInput'];
+            $this->backupService->restoreBackup($backupFile);
+        }
+        catch (\Exception $e) {
+            Toast::error('Error restoring backup');
+            return redirect()->back();
+        }
 
         Toast::success('Backup restored successfully');
         return redirect()->back();
