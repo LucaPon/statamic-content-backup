@@ -23,6 +23,7 @@ class ServiceProvider extends AddonServiceProvider
         Nav::extend(function ($nav) {
             $nav->content('Backup')
                 ->section('Tools')
+                ->can('statamic-content-backup-permission')
                 ->route('statamic-content-backup.index')
                 ->icon('download');
         });
@@ -48,6 +49,7 @@ class ServiceProvider extends AddonServiceProvider
         $this->registerCpRoutes(function () {
             Route::name('statamic-content-backup.')
                 ->prefix('/statamic-content-backup')
+                ->middleware('can:statamic-content-backup-permission')
                 ->group(function () {
                     Route::get('/', [ContentBackupController::class, 'index'])->name('index');
                     Route::get('/backup', [ContentBackupController::class, 'downloadBackup'])->name('backup');
