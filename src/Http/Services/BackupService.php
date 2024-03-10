@@ -8,10 +8,11 @@ use ZipArchive;
 class BackupService
 {
     private $tempFolderName = "temp";
+    private $config = "statamic.statamic-content-backup.include_files";
 
-    public function createBackup(): bool | string
+    public function createBackup(): string
     {
-        $includeFiles = config()->get('statamic-content-backup.include_files');
+        $includeFiles = config()->get($this->config);
         $backupFileName = date('Ymd') . '_' . env('APP_NAME') . '.zip';
 
         $zip = new ZipArchive();
@@ -19,7 +20,10 @@ class BackupService
         $zip->open($backupPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
 
         foreach ($includeFiles as $file) {
-            $this->addToZip(base_path($file), $zip);
+            $fileName = base_path($file);
+            if(File::exists($fileName)) {
+                $this->addToZip($fileName, $zip);
+            }
         }
 
         if(!$zip->close()){
@@ -33,7 +37,7 @@ class BackupService
     public function restoreBackup($backupPath): void
     {
 
-        $includeFiles = config()->get('statamic-content-backup.include_files');
+        $includeFiles = config()->get($this->config);
 
         $zip = new ZipArchive();
         if(!$zip->open($backupPath)){
@@ -49,14 +53,15 @@ class BackupService
                 $tempFile = $tempFolder . DIRECTORY_SEPARATOR . $file;
                 $oldFile = base_path($file);
                 if(File::exists($tempFile)) {
+
                     if (File::isDirectory($oldFile)) {
                         File::deleteDirectory($oldFile);
-                        File::moveDirectory($tempFile, $oldFile);
                     }
                     if (File::isFile($oldFile)) {
                         File::delete($oldFile);
-                        File::move($tempFile, $oldFile);
                     }
+
+                    File::move($tempFile, $oldFile);
                 }
             }
 
