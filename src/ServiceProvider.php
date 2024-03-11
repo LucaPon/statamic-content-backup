@@ -32,8 +32,8 @@ class ServiceProvider extends AddonServiceProvider
     private function setConfig()
     {
         $this->publishes([
-            __DIR__.'/../config/statamic-content-backup.php' => config_path('statamic/statamic-content-backup.php')
-        ], 'config');
+            __DIR__.'/../config/statamic-content-backup.php' => config_path('statamic-content-backup.php')
+        ], 'statamic-content-backup');
     }
 
     private function setPermissions()
