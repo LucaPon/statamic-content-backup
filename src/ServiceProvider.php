@@ -7,18 +7,21 @@ use LucaPon\StatamicContentBackup\Http\Controllers\ContentBackupController;
 use Statamic\Facades\CP\Nav;
 use Statamic\Facades\Permission;
 use Statamic\Providers\AddonServiceProvider;
+use Statamic\Statamic;
 
 class ServiceProvider extends AddonServiceProvider
 {
-    public function bootAddon()
+    public function bootAddon(): void
     {
+        parent::bootAddon();
+
         $this->setNav();
         $this->setConfig();
         $this->setPermissions();
         $this->setCpRoutes();
     }
 
-    private function setNav()
+    private function setNav(): void
     {
         Nav::extend(function ($nav) {
             $nav->content('Backup')
@@ -29,14 +32,18 @@ class ServiceProvider extends AddonServiceProvider
         });
     }
 
-    private function setConfig()
+    private function setConfig(): void
     {
         $this->publishes([
             __DIR__.'/../config/statamic-content-backup.php' => config_path('statamic-content-backup.php')
         ], 'statamic-content-backup');
+
+        Statamic::afterInstalled(function ($command) {
+            $command->call('vendor:publish', ['--provider' => 'LucaPon\StatamicContentBackup\ServiceProvider']);
+        });
     }
 
-    private function setPermissions()
+    private function setPermissions(): void
     {
         Permission::group('statamic-content-backup', 'Backup', function () {
             Permission::register('statamic-content-backup-permission')
@@ -44,7 +51,7 @@ class ServiceProvider extends AddonServiceProvider
         });
     }
 
-    private function setCpRoutes()
+    private function setCpRoutes(): void
     {
         $this->registerCpRoutes(function () {
             Route::name('statamic-content-backup.')
