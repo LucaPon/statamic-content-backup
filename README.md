@@ -2,6 +2,9 @@
 
 Statamic Content Backup is a Statamic addon that enables a control panel user to download and restore content backups.
 
+
+<img src="images/image.png" />
+
 <!--
 ## How to Install
 
