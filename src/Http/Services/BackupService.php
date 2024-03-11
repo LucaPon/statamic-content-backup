@@ -8,7 +8,7 @@ use ZipArchive;
 class BackupService
 {
     private $tempFolderName = "temp";
-    private $config = "statamic.statamic-content-backup.include_files";
+    private $config = "statamic-content-backup.include_files";
 
     public function createBackup(): string
     {
