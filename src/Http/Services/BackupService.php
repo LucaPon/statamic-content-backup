@@ -3,6 +3,7 @@
 namespace LucaPon\StatamicContentBackup\Http\Services;
 
 use Illuminate\Support\Facades\File;
+use Statamic\Facades\Stache;
 use ZipArchive;
 
 class BackupService
@@ -66,6 +67,9 @@ class BackupService
             }
 
             $this->cleanTempFolder();
+
+            //Refresh Statamic Stache
+            Stache::refresh();
 
         }catch (\Exception $e) {
             $this->cleanTempFolder();
