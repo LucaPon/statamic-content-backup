@@ -1,9 +1,10 @@
 {
     "name": "lucapon/statamic-content-backup",
-    "description": "Statamic addon that enables a control panel user to download and restore content backups.",
+    "description": "Statamic Content Backup is a Statamic addon that allows control panel users to download and restore content backups easily.",
     "license": "MIT",
     "require": {
-        "ext-zip": "*"
+        "ext-zip": "*",
+        "spatie/db-dumper": "^3.7"
     },
     "autoload": {
         "psr-4": {
@@ -13,7 +14,7 @@
     "extra": {
         "statamic": {
             "name": "Statamic Content Backup",
-            "description": "Statamic addon that enables a control panel user to download and restore content backups."
+            "description": "Statamic Content Backup is a Statamic addon that allows control panel users to download and restore content backups easily."
         },
         "laravel": {
             "providers": [

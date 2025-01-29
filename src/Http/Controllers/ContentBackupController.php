@@ -3,15 +3,10 @@
 namespace LucaPon\StatamicContentBackup\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use LucaPon\StatamicContentBackup\Http\Services\BackupService;
-use Psr\Container\ContainerExceptionInterface;
-use Psr\Container\NotFoundExceptionInterface;
 use Statamic\Facades\CP\Toast;
 use Statamic\Http\Controllers\Controller;
-use ZipArchive;
-use Illuminate\Support\Facades\File;
 
 
 class ContentBackupController extends Controller
@@ -24,7 +19,7 @@ class ContentBackupController extends Controller
         $this->backupService = $backupService;
     }
 
-    public function index(Request $request)
+    public function index()
     {
         return view('statamic-content-backup::index');
     }
@@ -34,13 +29,13 @@ class ContentBackupController extends Controller
         try {
             $backupFile = $this->backupService->createBackup();
         }catch (\Exception $e) {
+            report($e);
             Toast::error('Error creating backup');
             return redirect()->back();
         }
 
-        return response()->download($backupFile)->deleteFileAfterSend(true);
+        return response()->download($backupFile);
     }
-
 
     public function restoreBackup(Request $request)
     {
@@ -59,6 +54,8 @@ class ContentBackupController extends Controller
             $this->backupService->restoreBackup($backupFile);
         }
         catch (\Exception $e) {
+            report($e);
+            $this->backupService->cleanUp();
             Toast::error('Error restoring backup');
             return redirect()->back();
         }

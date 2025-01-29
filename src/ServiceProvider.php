@@ -4,6 +4,7 @@ namespace LucaPon\StatamicContentBackup;
 
 use Illuminate\Support\Facades\Route;
 use LucaPon\StatamicContentBackup\Http\Controllers\ContentBackupController;
+use LucaPon\StatamicContentBackup\Http\Middleware\CleanupMiddleware;
 use Statamic\Facades\CP\Nav;
 use Statamic\Facades\Permission;
 use Statamic\Providers\AddonServiceProvider;
@@ -59,7 +60,9 @@ class ServiceProvider extends AddonServiceProvider
                 ->middleware('can:statamic-content-backup-permission')
                 ->group(function () {
                     Route::get('/', [ContentBackupController::class, 'index'])->name('index');
-                    Route::get('/backup', [ContentBackupController::class, 'downloadBackup'])->name('backup');
+                    Route::get('/backup', [ContentBackupController::class, 'downloadBackup'])
+                        ->middleware(CleanupMiddleware::class)
+                        ->name('backup');
                     Route::post('/restore', [ContentBackupController::class, 'restoreBackup'])->name('restore');
                 });
         });
