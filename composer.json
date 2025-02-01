@@ -4,7 +4,9 @@
     "license": "MIT",
     "require": {
         "ext-zip": "*",
-        "spatie/db-dumper": "^3.7"
+        "spatie/db-dumper": "^3.7",
+        "tightenco/ziggy": "^2.5",
+        "pion/laravel-chunk-upload": "^1.5"
     },
     "autoload": {
         "psr-4": {
