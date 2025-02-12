@@ -24,7 +24,6 @@ class ServiceProvider extends AddonServiceProvider
         parent::bootAddon();
 
         $this->setNav();
-        $this->setConfig();
         $this->setPermissions();
         $this->setCpRoutes();
     }
@@ -38,13 +37,6 @@ class ServiceProvider extends AddonServiceProvider
                 ->route('statamic-content-backup.index')
                 ->icon('download');
         });
-    }
-
-    private function setConfig(): void
-    {
-        $this->publishes([
-            __DIR__.'/../config/statamic-content-backup.php' => config_path('statamic-content-backup.php')
-        ], 'statamic-content-backup');
     }
 
     private function setPermissions(): void

@@ -23,7 +23,7 @@ composer require lucapon/statamic-content-backup
 After installation, publish the configuration file with:
 
 ```bash
-php artisan vendor:publish --tag=statamic-content-backup
+php artisan vendor:publish --tag=statamic-content-backup-config
 ```
 
 ## Customization
@@ -35,7 +35,7 @@ You can customize which files and database tables are included in the backup by 
 If you upgrade to version `^2.0.0`, it is recommended to republish the configuration file to ensure compatibility with the updated features. Run the following command:
 
 ```bash
-php artisan vendor:publish --tag=statamic-content-backup --force
+php artisan vendor:publish --tag=statamic-content-backup-config --force
 ```
 
 This will overwrite your old configuration file with the updated version. Be sure to review the new configuration file for any additional options or changes.
