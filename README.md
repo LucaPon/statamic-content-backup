@@ -14,20 +14,17 @@ Statamic Content Backup is a Statamic addon that allows control panel users to d
 
 ## Installation
 
-You can install this addon in two ways:
+Install this addon running the following command from your project's root directory:
 
-1. From the Statamic control panel:
+```bash
+composer require lucapon/statamic-content-backup
+```
 
-   - Navigate to `Tools > Addons`.
-   - Search for "Statamic Content Backup" and click **Install**.
+After installation, publish the configuration file with:
 
-2. Using Composer:
-
-   - Run the following command from your project root:
-     ```bash
-     composer require lucapon/statamic-content-backup
-     ```
-
+```bash
+php artisan vendor:publish --tag=statamic-content-backup
+```
 
 ## Customization
 
