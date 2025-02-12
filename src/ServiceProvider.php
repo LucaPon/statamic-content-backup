@@ -8,7 +8,6 @@ use LucaPon\StatamicContentBackup\Http\Middleware\CleanupMiddleware;
 use Statamic\Facades\CP\Nav;
 use Statamic\Facades\Permission;
 use Statamic\Providers\AddonServiceProvider;
-use Statamic\Statamic;
 
 class ServiceProvider extends AddonServiceProvider
 {
@@ -46,10 +45,6 @@ class ServiceProvider extends AddonServiceProvider
         $this->publishes([
             __DIR__.'/../config/statamic-content-backup.php' => config_path('statamic-content-backup.php')
         ], 'statamic-content-backup');
-
-        Statamic::afterInstalled(function ($command) {
-            $command->call('vendor:publish', ['--provider' => 'LucaPon\StatamicContentBackup\ServiceProvider']);
-        });
     }
 
     private function setPermissions(): void
