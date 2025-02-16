@@ -188,5 +188,11 @@ class BackupService
         if (File::exists($tempFolder)) {
             File::deleteDirectory($tempFolder);
         }
+
+        $chunckFolder = storage_path('app/chunks');
+        if (File::exists($chunckFolder)) {
+            File::deleteDirectory($chunckFolder);
+        }
+
     }
 }
