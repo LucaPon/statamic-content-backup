@@ -5,26 +5,26 @@
 
         <div class="p-4 card content">
             <div class="flex flex-col justify-between gap-3 cursor-pointer md:flex-row">
-                <div @click="downloadBackup" class="flex w-full p-4 rounded-md md:w-1/2 hover:bg-gray-200 group">
+                <div @click="downloadBackup" class="flex w-full p-4 rounded-md md:w-1/2 hover:bg-gray-200 group dark:hover:bg-dark-575 dark:hover:border-dark-400">
                     <div class="w-8 h-8 mr-4 text-gray-800 shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5" d="M.752 21.751a1.5 1.5 0 0 0 1.5 1.5m0-22.5a1.5 1.5 0 0 0-1.5 1.5m22.5 0a1.5 1.5 0 0 0-1.5-1.5m0 22.5a1.5 1.5 0 0 0 1.5-1.5m0-15.75v1.5m0 3.75v1.5m0 3.75v1.5m-22.5-12v1.5m0 3.75v1.5m0 3.75v1.5m5.25 5.25h1.5m3.75 0h1.5m3.75 0h1.5m-12-22.5h1.5m3.75 0h1.5m3.75 0h1.5m-6 5.25v12m4.5-4.5-4.5 4.5-4.5-4.5"></path></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="text-gray-800 dark:text-dark-175"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5" d="M.752 21.751a1.5 1.5 0 0 0 1.5 1.5m0-22.5a1.5 1.5 0 0 0-1.5 1.5m22.5 0a1.5 1.5 0 0 0-1.5-1.5m0 22.5a1.5 1.5 0 0 0 1.5-1.5m0-15.75v1.5m0 3.75v1.5m0 3.75v1.5m-22.5-12v1.5m0 3.75v1.5m0 3.75v1.5m5.25 5.25h1.5m3.75 0h1.5m3.75 0h1.5m-12-22.5h1.5m3.75 0h1.5m3.75 0h1.5m-6 5.25v12m4.5-4.5-4.5 4.5-4.5-4.5"></path></svg>
                     </div>
                     <div class="flex flex-col">
-                            <div class="flex flex-row items-center gap-2 mb-2">
-                                <h3 class="mb-0 text-blue">Download Backup</h3>
-                                <svg v-show="backupLoading" class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite"/></path></svg>
-                            </div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <h3 class="mb-0 text-blue">Download Backup</h3>
+                            <svg v-show="backupLoading" class="w-4 h-4 text-gray-800 dark:text-dark-175" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite"/></path></svg>
+                        </div>
                         <p class="text-xs">Download content backup zip.</p>
                     </div>
                 </div>
-                <a ref="restoreButton" class="flex w-full p-4 rounded-md md:w-1/2 hover:bg-gray-200 group">
+                <a ref="restoreButton" class="flex w-full p-4 rounded-md md:w-1/2 hover:bg-gray-200 group dark:hover:bg-dark-575 dark:hover:border-dark-400">
                     <div class="w-8 h-8 mr-4 text-gray-800 rotate-180 shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5" d="M.752 21.751a1.5 1.5 0 0 0 1.5 1.5m0-22.5a1.5 1.5 0 0 0-1.5 1.5m22.5 0a1.5 1.5 0 0 0-1.5-1.5m0 22.5a1.5 1.5 0 0 0 1.5-1.5m0-15.75v1.5m0 3.75v1.5m0 3.75v1.5m-22.5-12v1.5m0 3.75v1.5m0 3.75v1.5m5.25 5.25h1.5m3.75 0h1.5m3.75 0h1.5m-12-22.5h1.5m3.75 0h1.5m3.75 0h1.5m-6 5.25v12m4.5-4.5-4.5 4.5-4.5-4.5"></path></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="text-gray-800 dark:text-dark-175"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5" d="M.752 21.751a1.5 1.5 0 0 0 1.5 1.5m0-22.5a1.5 1.5 0 0 0-1.5 1.5m22.5 0a1.5 1.5 0 0 0-1.5-1.5m0 22.5a1.5 1.5 0 0 0 1.5-1.5m0-15.75v1.5m0 3.75v1.5m0 3.75v1.5m-22.5-12v1.5m0 3.75v1.5m0 3.75v1.5m5.25 5.25h1.5m3.75 0h1.5m3.75 0h1.5m-12-22.5h1.5m3.75 0h1.5m3.75 0h1.5m-6 5.25v12m4.5-4.5-4.5 4.5-4.5-4.5"></path></svg>
                     </div>
                     <div class="flex flex-col">
                         <div class="flex flex-row items-center gap-2 mb-2">
                             <h3 class="mb-0 text-blue">Restore Backup</h3>
-                            <svg v-show="restoreLoading" class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite"/></path></svg>
+                            <svg v-show="restoreLoading" class="w-4 h-4 text-gray-800 dark:text-dark-175" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite"/></path></svg>
                         </div>
                         <p class="text-xs">Restore content backup previously downloaded.</p>
                         <p class="text-xs">This will replace current content!</p>
