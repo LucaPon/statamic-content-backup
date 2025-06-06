@@ -2,9 +2,14 @@
 
 namespace LucaPon\StatamicContentBackup\Http\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use LucaPon\StatamicContentBackup\Http\Exceptions\BackupCreationException;
+use LucaPon\StatamicContentBackup\Http\Exceptions\BackupDeletionException;
+use LucaPon\StatamicContentBackup\Http\Exceptions\BackupWithSameNameException;
+use LucaPon\StatamicContentBackup\Http\Exceptions\UnsupportedDatabaseDriverException;
 use Statamic\Facades\Stache;
 use ZipArchive;
 
@@ -14,9 +19,60 @@ class BackupService
     private $databaseBasePath = 'database';
     private $filesBasePath = 'files';
 
-    public function createBackup(): string
+    public function listBackups(): array
+    {
+        $backupFolder = $this->getBackupFolder();
+
+        $files = File::files($backupFolder);
+        $backups = [];
+
+        //order files by creation time, newest first
+        usort($files, function ($a, $b) {
+            return $b->getCTime() <=> $a->getCTime();
+        });
+
+        foreach ($files as $file) {
+            if ($file->getExtension() === 'zip') {
+                $backups[] = [
+                    'name' => $file->getFilename(),
+                    'size' => $file->getSize(),
+                    'created' => $file->getCTime(),
+                    'modified' => $file->getMTime(),
+                ];
+            }
+        }
+
+        return $backups;
+    }
+
+    public function getBackupJobStatus(): array
+    {
+        $status = [
+            'running' => Cache::get('statamic-content-backup.backup_job_creating', null),
+            'success' => Cache::get('statamic-content-backup.backup_job_success', null),
+            'error' => Cache::get('statamic-content-backup.backup_job_error', null),
+        ];
+
+        if( $status['success'] || $status['error'] ) {
+            Cache::forget('statamic-content-backup.backup_job_creating');
+            Cache::forget('statamic-content-backup.backup_job_success');
+            Cache::forget('statamic-content-backup.backup_job_error');
+        }
+
+        return $status;
+    }
+
+    public function createBackup(): void
     {
         $backupFileName = $this->generateBackupFileName();
+        $backupFolder = $this->getBackupFolder();
+        $finalBackupPath = $backupFolder . '/' . $backupFileName;
+
+        Cache::put('statamic-content-backup.backup_job_creating', $backupFileName);
+
+        if( File::exists($finalBackupPath) ) {
+            throw new BackupWithSameNameException($backupFileName);
+        }
 
         $includeTables = config()->get('statamic-content-backup.include_tables');
         $includeFiles = config()->get('statamic-content-backup.include_files');
@@ -26,22 +82,29 @@ class BackupService
 
         $zip = new ZipArchive();
         if ($zip->open($backupPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new \Exception('Error creating backup file');
+            throw new BackupCreationException('Error creating backup file');
         }
 
         $this->backupFiles($zip, $includeFiles);
         $this->backupDatabaseTables($zip, $includeTables);
 
         if (!$zip->close()) {
-            throw new \Exception('Error closing backup file');
+            throw new BackupCreationException('Error closing backup file');
         }
 
-        return $backupPath;
+        if (!File::move($backupPath, $finalBackupPath)) {
+            throw new BackupCreationException('Error moving backup file to final destination');
+        }
+
+        $this->cleanup();
+
+
+        Cache::forget('statamic-content-backup.backup_job_creating');
+        Cache::put('statamic-content-backup.backup_job_success', $backupFileName);
 
     }
 
-    private function generateBackupFilename(): string
-    {
+    private function generateBackupFilename(): string {
         $date = date('Ymd');
         $time = date('His');
         $appName = env('APP_NAME');
@@ -49,8 +112,7 @@ class BackupService
         return str_replace(['{date}', '{time}', '{appName}'], [$date, $time, $appName], $format) . '.zip';
     }
 
-    private function backupFiles($zip, $includeFiles): void
-    {
+    private function backupFiles($zip, $includeFiles): void {
         foreach ($includeFiles as $file) {
             $filePath = base_path($file);
             if(File::exists($filePath)) {
@@ -101,7 +163,20 @@ class BackupService
                 ->setPassword($password);
 
         }else {
-            throw new \Exception('Database driver not supported');
+            throw new UnsupportedDatabaseDriverException($databaseDriver);
+        }
+    }
+
+    public function deleteBackup($backupName): void
+    {
+        $backupFolder = $this->getBackupFolder();
+        $backupPath = $backupFolder . '/' . $backupName;
+
+        if (!File::exists($backupPath)) {
+            throw new BackupDeletionException('Backup file does not exist');
+        }
+        if (!File::delete($backupPath)) {
+            throw new BackupDeletionException('Error deleting backup file');
         }
     }
 
@@ -174,12 +249,22 @@ class BackupService
 
     private function getTempFolder(): string
     {
-        $tempFolder = storage_path($this->tempFolderName);
+        $tempFolder = config()->get('statamic-content-backup.backup_folder') . DIRECTORY_SEPARATOR . $this->tempFolderName;
         if (!File::exists($tempFolder)) {
             File::makeDirectory($tempFolder, recursive: true);
         }
 
         return $tempFolder;
+    }
+
+    private function getBackupFolder(): string
+    {
+        $backupFolder = config()->get('statamic-content-backup.backup_folder');
+        if (!File::exists($backupFolder)) {
+            File::makeDirectory($backupFolder, recursive: true);
+        }
+
+        return $backupFolder;
     }
 
     public function cleanup(): void

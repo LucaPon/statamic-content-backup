@@ -63,9 +63,12 @@ class ServiceProvider extends AddonServiceProvider
                 ->middleware('can:statamic-content-backup-permission')
                 ->group(function () {
                     Route::get('/', [ContentBackupController::class, 'index'])->name('index');
-                    Route::get('/backup', [ContentBackupController::class, 'downloadBackup'])
-                        ->middleware(CleanupMiddleware::class)
-                        ->name('backup');
+                    Route::get('/backups', [ContentBackupController::class, 'listBackups'])->name('list');
+                    Route::get('/status', [ContentBackupController::class, 'getBackupJobStatus'])->name('status');
+                    Route::post('/backup', [ContentBackupController::class, 'createBackup'])->name('createBackup');
+                    Route::delete('/delete', [ContentBackupController::class, 'deleteBackup'])->name('deleteBackup');
+                    Route::get('/download', [ContentBackupController::class, 'downloadBackup'])->name('download');
+                    Route::post('/upload', [ContentBackupController::class, 'uploadBackup'])->name('upload');
                     Route::post('/restore', [ContentBackupController::class, 'restoreBackup'])->name('restore');
                 });
         });

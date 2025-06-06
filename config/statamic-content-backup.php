@@ -32,6 +32,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Backup Folder
+    |--------------------------------------------------------------------------
+    |
+    | Specify the folder where backups will be stored.
+    | Ensure that the folder is writable by the web server.
+    |
+    */
+
+    'backup_folder' => storage_path('app/backups'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Backup Filename Format
     |--------------------------------------------------------------------------
     |
@@ -44,5 +56,17 @@ return [
     */
 
     'backup_filename_format' => 'backup_{date}_{time}',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Max Backup Files
+    |--------------------------------------------------------------------------
+    |
+    | Specify the maximum number of backup files to keep.
+    | When the limit is reached, the oldest backup file will be deleted.
+    |
+    */
+
+    'max_backup_files' => 10,
 
 ];

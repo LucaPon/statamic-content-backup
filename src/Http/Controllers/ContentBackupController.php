@@ -2,7 +2,9 @@
 
 namespace LucaPon\StatamicContentBackup\Http\Controllers;
 
+use LucaPon\StatamicContentBackup\Jobs\BackupJob;
 use Illuminate\Http\Request;
+use LucaPon\StatamicContentBackup\Http\Requests\DeleteBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Services\BackupService;
 use Pion\Laravel\ChunkUpload\Exceptions\UploadMissingFileException;
 use Pion\Laravel\ChunkUpload\Receiver\FileReceiver;
@@ -23,6 +25,43 @@ class ContentBackupController extends Controller
         return view('statamic-content-backup::index');
     }
 
+    public function listBackups()
+    {
+        $backups = $this->backupService->listBackups();
+        return response()->json($backups);
+    }
+
+    public function getBackupJobStatus()
+    {
+        $status = $this->backupService->getBackupJobStatus();
+
+        return response()->json($status);
+    }
+
+    public function createBackup(){
+
+        BackupJob::dispatch();
+
+        return response()->json([
+            'status' => 'success'
+        ]);
+
+    }
+
+    public function deleteBackup(DeleteBackupRequest $request)
+    {
+        $backupName = $request->input('name');
+
+        try {
+            $this->backupService->deleteBackup($backupName);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Failed to delete backup'], 500);
+        }
+
+        return response()->json(['success' => 'Backup deleted successfully']);
+    }
+
     public function downloadBackup(Request $request)
     {
         try {
@@ -33,6 +72,10 @@ class ContentBackupController extends Controller
         }
 
         return response()->download($backupFile);
+    }
+
+    public function uploadBackup(Request $request){
+
     }
 
     public function restoreBackup(FileReceiver $receiver)
