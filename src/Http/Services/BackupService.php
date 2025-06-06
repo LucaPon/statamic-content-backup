@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Number;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupCreationException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupDeletionException;
+use LucaPon\StatamicContentBackup\Http\Exceptions\BackupNotFoundException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupWithSameNameException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\UnsupportedDatabaseDriverException;
 use Statamic\Facades\Stache;
@@ -35,26 +37,25 @@ class BackupService
             if ($file->getExtension() === 'zip') {
                 $backups[] = [
                     'name' => $file->getFilename(),
-                    'size' => $file->getSize(),
+                    'size' => Number::fileSize($file->getSize()),
                     'created' => $file->getCTime(),
                     'modified' => $file->getMTime(),
                 ];
             }
         }
-
         return $backups;
     }
 
     public function getBackupJobStatus(): array
     {
         $status = [
-            'running' => Cache::get('statamic-content-backup.backup_job_creating', null),
+            'runningName' => Cache::get('statamic-content-backup.backup_job_runningName', null),
             'success' => Cache::get('statamic-content-backup.backup_job_success', null),
             'error' => Cache::get('statamic-content-backup.backup_job_error', null),
         ];
 
         if( $status['success'] || $status['error'] ) {
-            Cache::forget('statamic-content-backup.backup_job_creating');
+            Cache::forget('statamic-content-backup.backup_job_runningName');
             Cache::forget('statamic-content-backup.backup_job_success');
             Cache::forget('statamic-content-backup.backup_job_error');
         }
@@ -68,7 +69,7 @@ class BackupService
         $backupFolder = $this->getBackupFolder();
         $finalBackupPath = $backupFolder . '/' . $backupFileName;
 
-        Cache::put('statamic-content-backup.backup_job_creating', $backupFileName);
+        Cache::put('statamic-content-backup.backup_job_runningName', $backupFileName);
 
         if( File::exists($finalBackupPath) ) {
             throw new BackupWithSameNameException($backupFileName);
@@ -99,8 +100,8 @@ class BackupService
         $this->cleanup();
 
 
-        Cache::forget('statamic-content-backup.backup_job_creating');
         Cache::put('statamic-content-backup.backup_job_success', $backupFileName);
+        Cache::forget('statamic-content-backup.backup_job_runningName');
 
     }
 
@@ -227,6 +228,18 @@ class BackupService
             $this->cleanup();
             throw $e;
         }
+    }
+
+    public function getBackupFilePath(string $backupName): string
+    {
+        $backupFolder = $this->getBackupFolder();
+        $backupFilePath = $backupFolder . DIRECTORY_SEPARATOR . $backupName;
+
+        if (!File::exists($backupFilePath)) {
+            throw new BackupNotFoundException('Backup file not found: ' . $backupFilePath);
+        }
+
+        return $backupFilePath;
     }
 
     private function addToZip($file, $zip, $entryName = null): void

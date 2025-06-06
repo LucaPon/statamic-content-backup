@@ -1,105 +1,27 @@
 <template>
   <div>
-    <h1 class="mb-6">Backup</h1>
+    <h1>Backup</h1>
 
-    <div class="p-4 card content">
-      <div
-        class="flex flex-col justify-between gap-3 cursor-pointer md:flex-row"
+    <div class="flex gap-3">
+      <button
+        class="flex items-center gap-2 px-4 py-2 mt-4 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+        @click="createBackup"
       >
-        <div
-          @click="createBackup"
-          class="flex w-full p-4 rounded-md md:w-1/2 hover:bg-gray-200 group dark:hover:bg-dark-575 dark:hover:border-dark-400"
-        >
-          <div class="w-8 h-8 mr-4 text-gray-800 shrink-0">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              class="text-gray-800 dark:text-dark-175"
-            >
-              <path
-                fill="none"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-width="1.5"
-                d="M.752 21.751a1.5 1.5 0 0 0 1.5 1.5m0-22.5a1.5 1.5 0 0 0-1.5 1.5m22.5 0a1.5 1.5 0 0 0-1.5-1.5m0 22.5a1.5 1.5 0 0 0 1.5-1.5m0-15.75v1.5m0 3.75v1.5m0 3.75v1.5m-22.5-12v1.5m0 3.75v1.5m0 3.75v1.5m5.25 5.25h1.5m3.75 0h1.5m3.75 0h1.5m-12-22.5h1.5m3.75 0h1.5m3.75 0h1.5m-6 5.25v12m4.5-4.5-4.5 4.5-4.5-4.5"
-              ></path>
-            </svg>
-          </div>
-          <div class="flex flex-col">
-            <div class="flex flex-row items-center gap-2 mb-2">
-              <h3 class="mb-0 text-blue">Download Backup</h3>
-              <svg
-                v-show="backupLoading"
-                class="w-4 h-4 text-gray-800 dark:text-dark-175"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  fill="currentColor"
-                  d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z"
-                >
-                  <animateTransform
-                    attributeName="transform"
-                    type="rotate"
-                    dur="0.75s"
-                    values="0 12 12;360 12 12"
-                    repeatCount="indefinite"
-                  />
-                </path>
-              </svg>
-            </div>
-            <p class="text-xs">Download content backup zip.</p>
-          </div>
-        </div>
-        <a
-          ref="restoreButton"
-          class="flex w-full p-4 rounded-md md:w-1/2 hover:bg-gray-200 group dark:hover:bg-dark-575 dark:hover:border-dark-400"
-        >
-          <div class="w-8 h-8 mr-4 text-gray-800 rotate-180 shrink-0">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              class="text-gray-800 dark:text-dark-175"
-            >
-              <path
-                fill="none"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-width="1.5"
-                d="M.752 21.751a1.5 1.5 0 0 0 1.5 1.5m0-22.5a1.5 1.5 0 0 0-1.5 1.5m22.5 0a1.5 1.5 0 0 0-1.5-1.5m0 22.5a1.5 1.5 0 0 0 1.5-1.5m0-15.75v1.5m0 3.75v1.5m0 3.75v1.5m-22.5-12v1.5m0 3.75v1.5m0 3.75v1.5m5.25 5.25h1.5m3.75 0h1.5m3.75 0h1.5m-12-22.5h1.5m3.75 0h1.5m3.75 0h1.5m-6 5.25v12m4.5-4.5-4.5 4.5-4.5-4.5"
-              ></path>
-            </svg>
-          </div>
-          <div class="flex flex-col">
-            <div class="flex flex-row items-center gap-2 mb-2">
-              <h3 class="mb-0 text-blue">Restore Backup</h3>
-              <svg
-                v-show="restoreLoading"
-                class="w-4 h-4 text-gray-800 dark:text-dark-175"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  fill="currentColor"
-                  d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z"
-                >
-                  <animateTransform
-                    attributeName="transform"
-                    type="rotate"
-                    dur="0.75s"
-                    values="0 12 12;360 12 12"
-                    repeatCount="indefinite"
-                  />
-                </path>
-              </svg>
-            </div>
-            <p class="text-xs">Restore content backup previously downloaded.</p>
-            <p class="text-xs">This will replace current content!</p>
-          </div>
-        </a>
-      </div>
+        <BackupIcon class="w-4" v-if="!backupRunning" />
+        <LoadingIcon class="w-4 animate-spin" v-else />
+        {{ backupRunning ? "Creating Backup..." : "Create Backup" }}
+      </button>
+      <button
+        ref="uploadButton"
+        @click="uploadBackup"
+        class="flex items-center gap-2 px-4 py-2 mt-4 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+      >
+        <UploadIcon class="w-4" />
+        Upload Backup
+      </button>
     </div>
-    <div class="p-0 overflow-hidden mt-7 card">
+
+    <div class="p-0 mt-3 overflow-hidden card">
       <table class="data-table">
         <thead>
           <tr>
@@ -112,36 +34,52 @@
             <th class="rounded-none group current-column sortable-column">
               <span>Created at</span>
             </th>
-
             <th class="rounded-none actions-column"></th>
           </tr>
         </thead>
-        <tbody class="text-gray-800">
-          <tr v-if="!backupRunning && backups.length === 0" class="">
+        <tbody class="text-gray-800 dark:text-dark-175">
+          <tr v-if="!runningBackupName && backups.length === 0" class="">
             <td class="">No backups found</td>
           </tr>
 
-          <tr v-if="backupRunning" class="">
-            <td class="">{{ backupRunning }}</td>
+          <tr v-if="runningBackupName" class="">
+            <td class="">{{ runningBackupName }}</td>
             <td class=""></td>
             <td class=""></td>
             <td class="">
-              <LoadingIcon />
+              <LoadingIcon class="float-right w-4 h-4 animate-spin" />
             </td>
           </tr>
 
           <tr v-for="(backup, index) in backups" :key="index">
             <td class="">{{ backup.name }}</td>
             <td class="">{{ backup.size }}</td>
-            <td class="">{{ backup.created }}</td>
+            <td class="">
+              {{ new Date(backup.created * 1000).toLocaleDateString() }}
+              {{
+                new Date(backup.created * 1000).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              }}
+            </td>
             <td class="">
               <div class="flex gap-2 min-w-max">
-                <button class="w-4 h-4 cursor-pointer">
-                  <DownloadIcon />
+                <button class="w-4 h-4 cursor-pointer" v-tooltip="'Restore'">
+                  <RestoreIcon />
                 </button>
                 <button
+                  class="relative w-4 h-4 cursor-pointer"
+                  v-tooltip="'Download'"
+                  @click="downloadBackup(backup.name)"
+                >
+                  <DownloadIcon v-if="downloadLoading != backup.name" />
+                  <LoadingIcon v-else class="animate-spin" />
+                </button>
+                <button
+                  v-tooltip="'Delete'"
                   @click="deleteBackup(backup.name)"
-                  class="w-4 h-4 cursor-pointer"
+                  class="relative w-4 h-4 cursor-pointer"
                 >
                   <DeleteIcon class="text-red-600" />
                 </button>
@@ -160,6 +98,9 @@ import { defineComponent } from "vue";
 import LoadingIcon from "../../icons/LoadingIcon.vue";
 import DownloadIcon from "../../icons/DownloadIcon.vue";
 import DeleteIcon from "../../icons/DeleteIcon.vue";
+import RestoreIcon from "../../icons/RestoreIcon.vue";
+import BackupIcon from "../../icons/BackupIcon.vue";
+import UploadIcon from "../../icons/UploadIcon.vue";
 
 export default defineComponent({
   name: "Home",
@@ -167,6 +108,9 @@ export default defineComponent({
     LoadingIcon,
     DownloadIcon,
     DeleteIcon,
+    RestoreIcon,
+    BackupIcon,
+    UploadIcon,
   },
   mounted() {
     this.initResumable();
@@ -186,9 +130,10 @@ export default defineComponent({
     return {
       backups: [],
       backupsLoading: false,
-      backupRunning: null,
-      backupLoading: false,
-      restoreLoading: false,
+      backupRunning: false,
+      runningBackupName: null,
+      downloadLoading: null,
+      uploadLoading: false,
     };
   },
 
@@ -215,6 +160,10 @@ export default defineComponent({
       }
     },
     async loadJobStatus() {
+      if (!this.backupRunning) {
+        return;
+      }
+
       try {
         const response = await fetch(
           route("statamic.cp.statamic-content-backup.status")
@@ -225,28 +174,39 @@ export default defineComponent({
         }
 
         const data = await response.json();
+
         if (data.error) {
-          this.backupRunning = null;
+          this.runningBackupName = null;
+          this.backupRunning = false;
+
           this.$toast.error(data.error);
           this.loadBackups();
         } else if (data.success) {
-          this.backupRunning = null;
+          this.runningBackupName = null;
+          this.backupRunning = false;
           this.$toast.success(
             "Backup created successfully (" + data.success + ")"
           );
           this.loadBackups();
         }
 
-        if (data.running) {
-          this.backupRunning = data.running;
+        if (data.runningName) {
+          this.runningBackupName = data.runningName;
         } else {
-          this.backupRunning = null;
+          this.runningBackupName = null;
         }
       } catch (error) {
         console.error("Error loading job status:", error);
       }
     },
     async createBackup() {
+      if (this.backupRunning) {
+        this.$toast.info("A backup is already running");
+        return;
+      }
+
+      this.backupRunning = true;
+
       fetch(route("statamic.cp.statamic-content-backup.createBackup"), {
         method: "POST",
         headers: {
@@ -297,16 +257,21 @@ export default defineComponent({
         this.$toast.error("Error deleting backup");
       }
     },
-    async downloadBackup() {
-      this.backupsLoading = true;
+    async downloadBackup(backupName) {
+      if (this.downloadLoading) {
+        return; // Prevent multiple downloads
+      }
+      this.downloadLoading = backupName;
 
       try {
         const response = await fetch(
-          route("statamic.cp.statamic-content-backup.backup")
+          route("statamic.cp.statamic-content-backup.downloadBackup", {
+            name: backupName,
+          })
         );
 
         if (!response.ok) {
-          throw new Error("Errore nel download del file");
+          throw new Error("Error downloading file");
         }
 
         const blob = await response.blob();
@@ -326,12 +291,13 @@ export default defineComponent({
 
         window.URL.revokeObjectURL(url);
       } catch (error) {
-        this.$toast.error("Error creating backup");
+        this.$toast.error("Error downloading backup");
+        console.error("Error downloading backup:", error);
       } finally {
-        this.backupLoading = false;
+        this.downloadLoading = null;
       }
     },
-    restoreBackup() {
+    uploadBackup() {
       this.restoreLoading = true;
       this.$refs.fileInput.click();
     },
@@ -345,7 +311,7 @@ export default defineComponent({
         testChunks: false,
       });
 
-      resumable.assignBrowse(this.$refs.restoreButton);
+      resumable.assignBrowse(this.$refs.uploadButton);
 
       resumable.on("fileAdded", (file, event) => {
         if (
@@ -363,16 +329,14 @@ export default defineComponent({
 
       resumable.on("error", () => {
         this.restoreLoading = false;
-        this.$toast.error("Error restoring backup");
+        this.$toast.error("Error uploading backup");
       });
 
       resumable.on("fileSuccess", (file, message) => {
         this.restoreLoading = false;
-        this.$toast.success("Backup restored successfully");
+        this.$toast.success("Backup uploaded successfully");
       });
     },
   },
 });
 </script>
-
-<style></style>

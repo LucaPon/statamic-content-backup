@@ -4,7 +4,9 @@ namespace LucaPon\StatamicContentBackup\Http\Controllers;
 
 use LucaPon\StatamicContentBackup\Jobs\BackupJob;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use LucaPon\StatamicContentBackup\Http\Requests\DeleteBackupRequest;
+use LucaPon\StatamicContentBackup\Http\Requests\DownloadBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Services\BackupService;
 use Pion\Laravel\ChunkUpload\Exceptions\UploadMissingFileException;
 use Pion\Laravel\ChunkUpload\Receiver\FileReceiver;
@@ -62,14 +64,12 @@ class ContentBackupController extends Controller
         return response()->json(['success' => 'Backup deleted successfully']);
     }
 
-    public function downloadBackup(Request $request)
+    public function downloadBackup(DownloadBackupRequest $request)
     {
-        try {
-            $backupFile = $this->backupService->createBackup();
-        }catch (\Exception $e) {
-            report($e);
-            return redirect()->back();
-        }
+
+        $backupName = $request->input('name');
+
+        $backupFile = $this->backupService->getBackupFilePath($backupName) ;
 
         return response()->download($backupFile);
     }
