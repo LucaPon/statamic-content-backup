@@ -16,8 +16,10 @@
         @click="uploadBackup"
         class="flex items-center gap-2 px-4 py-2 mt-4 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
       >
-        <UploadIcon class="w-4" />
+        <UploadIcon class="w-4" v-if="!uploadLoading" />
+        <LoadingIcon class="w-4 animate-spin" v-else />
         Upload Backup
+        <span v-if="uploadLoading">({{ uploadProgress }}%)</span>
       </button>
     </div>
 
@@ -134,6 +136,7 @@ export default defineComponent({
       runningBackupName: null,
       downloadLoading: null,
       uploadLoading: false,
+      uploadProgress: 0,
     };
   },
 
@@ -298,12 +301,11 @@ export default defineComponent({
       }
     },
     uploadBackup() {
-      this.restoreLoading = true;
       this.$refs.fileInput.click();
     },
     initResumable() {
       const resumable = new Resumable({
-        target: route("statamic.cp.statamic-content-backup.restore"),
+        target: route("statamic.cp.statamic-content-backup.uploadBackup"),
         query: { _token: this.token },
         fileType: ["zip"],
         simultaneousUploads: 1,
@@ -313,27 +315,26 @@ export default defineComponent({
 
       resumable.assignBrowse(this.$refs.uploadButton);
 
-      resumable.on("fileAdded", (file, event) => {
-        if (
-          !confirm(
-            "Are you sure you want to restore this backup? This will replace current content!"
-          )
-        ) {
-          resumable.cancel();
-          return;
-        }
+      resumable.on("fileProgress", (file) => {
+        this.uploadProgress = Math.floor(file.progress() * 100);
+      });
 
-        this.restoreLoading = true;
+      resumable.on("fileAdded", (file, event) => {
+        this.uploadLoading = true;
         resumable.upload();
       });
 
       resumable.on("error", () => {
-        this.restoreLoading = false;
+        this.uploadLoading = false;
+        this.uploadProgress = 0;
+        this.loadBackups();
         this.$toast.error("Error uploading backup");
       });
 
       resumable.on("fileSuccess", (file, message) => {
-        this.restoreLoading = false;
+        this.uploadLoading = false;
+        this.uploadProgress = 0;
+        this.loadBackups();
         this.$toast.success("Backup uploaded successfully");
       });
     },

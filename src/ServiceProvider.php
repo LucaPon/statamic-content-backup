@@ -67,7 +67,7 @@ class ServiceProvider extends AddonServiceProvider
                     Route::post('/backup', [ContentBackupController::class, 'createBackup'])->name('createBackup');
                     Route::delete('/delete', [ContentBackupController::class, 'deleteBackup'])->name('deleteBackup');
                     Route::get('/download', [ContentBackupController::class, 'downloadBackup'])->name('downloadBackup');
-                    Route::post('/upload', [ContentBackupController::class, 'uploadBackup'])->name('upload');
+                    Route::post('/upload', [ContentBackupController::class, 'uploadBackup'])->name('uploadBackup');
                     Route::post('/restore', [ContentBackupController::class, 'restoreBackup'])->name('restore');
                 });
         });

@@ -74,12 +74,7 @@ class ContentBackupController extends Controller
         return response()->download($backupFile);
     }
 
-    public function uploadBackup(Request $request){
-
-    }
-
-    public function restoreBackup(FileReceiver $receiver)
-    {
+    public function uploadBackup(FileReceiver $receiver){
 
         //chunk upload
         if ($receiver->isUploaded() === false) {
@@ -91,7 +86,8 @@ class ContentBackupController extends Controller
         if ($recived->isFinished()) {
 
             try {
-                $this->backupService->restoreBackup($recived->getFile());
+                $file = $recived->getFile();
+                $this->backupService->saveUploadedBackup($file);
             }
             catch (\Exception $e) {
                 report($e);
@@ -104,6 +100,12 @@ class ContentBackupController extends Controller
         return response()->json([
             "progress" => $handler->getPercentageDone()
         ]);
+
+    }
+
+    public function restoreBackup(){
+
+
 
     }
 }

@@ -21,8 +21,7 @@ class BackupService
     private $databaseBasePath = 'database';
     private $filesBasePath = 'files';
 
-    public function listBackups(): array
-    {
+    public function listBackups(): array {
         $backupFolder = $this->getBackupFolder();
 
         $files = File::files($backupFolder);
@@ -46,8 +45,7 @@ class BackupService
         return $backups;
     }
 
-    public function getBackupJobStatus(): array
-    {
+    public function getBackupJobStatus(): array {
         $status = [
             'runningName' => Cache::get('statamic-content-backup.backup_job_runningName', null),
             'success' => Cache::get('statamic-content-backup.backup_job_success', null),
@@ -63,8 +61,7 @@ class BackupService
         return $status;
     }
 
-    public function createBackup(): void
-    {
+    public function createBackup(): void {
         $backupFileName = $this->generateBackupFileName();
         $backupFolder = $this->getBackupFolder();
         $finalBackupPath = $backupFolder . '/' . $backupFileName;
@@ -124,7 +121,7 @@ class BackupService
         }
     }
 
-    private function backupDatabaseTables($zip, $includeTables): void{
+    private function backupDatabaseTables($zip, $includeTables): void {
 
         if(!empty($includeTables)){
 
@@ -141,8 +138,7 @@ class BackupService
         }
     }
 
-    private function getDbDumper(): \Spatie\DbDumper\DbDumper
-    {
+    private function getDbDumper(): \Spatie\DbDumper\DbDumper {
 
         $databaseConnection = config()->get('database.default');
         $databaseDriver = config()->get('database.connections.' . $databaseConnection . '.driver');
@@ -168,8 +164,7 @@ class BackupService
         }
     }
 
-    public function deleteBackup($backupName): void
-    {
+    public function deleteBackup($backupName): void {
         $backupFolder = $this->getBackupFolder();
         $backupPath = $backupFolder . '/' . $backupName;
 
@@ -181,8 +176,7 @@ class BackupService
         }
     }
 
-    public function restoreBackup($backupPath): void
-    {
+    public function restoreBackup($backupPath): void {
         $includeTables = config()->get('statamic-content-backup.include_tables');
         $includeFiles = config()->get('statamic-content-backup.include_files');
 
@@ -230,8 +224,7 @@ class BackupService
         }
     }
 
-    public function getBackupFilePath(string $backupName): string
-    {
+    public function getBackupFilePath(string $backupName): string {
         $backupFolder = $this->getBackupFolder();
         $backupFilePath = $backupFolder . DIRECTORY_SEPARATOR . $backupName;
 
@@ -242,8 +235,22 @@ class BackupService
         return $backupFilePath;
     }
 
-    private function addToZip($file, $zip, $entryName = null): void
-    {
+    public function saveUploadedBackup($file): string {
+        $backupFolder = $this->getBackupFolder();
+        $filePath = $backupFolder . '/' . $file->getClientOriginalName();
+
+        // if (File::exists($filePath)) {
+        //     throw new BackupWithSameNameException($file->getClientOriginalName());
+        // }
+
+        if (!File::move($file->getRealPath(), $filePath)) {
+            throw new \Exception('Error saving uploaded backup file');
+        }
+
+        return $filePath;
+    }
+
+    private function addToZip($file, $zip, $entryName = null): void {
         if (!file_exists($file)) {
             return;
         }
@@ -260,8 +267,7 @@ class BackupService
         }
     }
 
-    private function getTempFolder(): string
-    {
+    private function getTempFolder(): string {
         $tempFolder = config()->get('statamic-content-backup.backup_folder') . DIRECTORY_SEPARATOR . $this->tempFolderName;
         if (!File::exists($tempFolder)) {
             File::makeDirectory($tempFolder, recursive: true);
@@ -270,8 +276,7 @@ class BackupService
         return $tempFolder;
     }
 
-    private function getBackupFolder(): string
-    {
+    private function getBackupFolder(): string {
         $backupFolder = config()->get('statamic-content-backup.backup_folder');
         if (!File::exists($backupFolder)) {
             File::makeDirectory($backupFolder, recursive: true);
@@ -280,8 +285,7 @@ class BackupService
         return $backupFolder;
     }
 
-    public function cleanup(): void
-    {
+    public function cleanup(): void {
         $tempFolder = $this->getTempFolder();
         if (File::exists($tempFolder)) {
             File::deleteDirectory($tempFolder);
