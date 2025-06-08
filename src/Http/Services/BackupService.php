@@ -176,11 +176,12 @@ class BackupService
         }
     }
 
-    public function restoreBackup($backupPath): void {
+    public function restoreBackup($backupName): void {
         $includeTables = config()->get('statamic-content-backup.include_tables');
         $includeFiles = config()->get('statamic-content-backup.include_files');
 
         $zip = new ZipArchive();
+        $backupPath = $this->getBackupFilePath($backupName);
         if(!$zip->open($backupPath)){
             throw new \Exception('Error opening backup file');
         }

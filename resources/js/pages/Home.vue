@@ -67,8 +67,13 @@
             </td>
             <td class="">
               <div class="flex gap-2 min-w-max">
-                <button class="w-4 h-4 cursor-pointer" v-tooltip="'Restore'">
-                  <RestoreIcon />
+                <button
+                  class="w-4 h-4 cursor-pointer"
+                  v-tooltip="'Restore'"
+                  @click="restoreBackup(backup.name)"
+                >
+                  <RestoreIcon v-if="downloadLoading != backup.name" />
+                  <LoadingIcon v-else class="animate-spin" />
                 </button>
                 <button
                   class="relative w-4 h-4 cursor-pointer"
@@ -137,6 +142,7 @@ export default defineComponent({
       downloadLoading: null,
       uploadLoading: false,
       uploadProgress: 0,
+      restoreRunning: null,
     };
   },
 
@@ -337,6 +343,40 @@ export default defineComponent({
         this.loadBackups();
         this.$toast.success("Backup uploaded successfully");
       });
+    },
+    async restoreBackup(backupName) {
+      if (this.restoreRunning) {
+        this.$toast.info("A restore is already running");
+        return;
+      }
+
+      this.restoreRunning = backupName;
+
+      try {
+        const response = await fetch(
+          route("statamic.cp.statamic-content-backup.restoreBackup", {
+            name: backupName,
+          }),
+          {
+            method: "POST",
+            headers: {
+              "X-CSRF-TOKEN": this.token,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Error restoring backup");
+        }
+
+        this.$toast.success("Backup restored successfully");
+        this.loadBackups();
+      } catch (error) {
+        console.error("Error restoring backup:", error);
+        this.$toast.error("Error restoring backup");
+      } finally {
+        this.restoreRunning = null;
+      }
     },
   },
 });

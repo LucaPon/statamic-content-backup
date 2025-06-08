@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use LucaPon\StatamicContentBackup\Http\Requests\DeleteBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Requests\DownloadBackupRequest;
+use LucaPon\StatamicContentBackup\Http\Requests\RestoreBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Services\BackupService;
 use Pion\Laravel\ChunkUpload\Exceptions\UploadMissingFileException;
 use Pion\Laravel\ChunkUpload\Receiver\FileReceiver;
@@ -103,9 +104,13 @@ class ContentBackupController extends Controller
 
     }
 
-    public function restoreBackup(){
+    public function restoreBackup(RestoreBackupRequest $request)
+    {
+        $backupName = $request->input('name');
 
+        $this->backupService->restoreBackup($backupName);
 
+        return response()->json(['success' => 'Backup restored successfully']);
 
     }
 }

@@ -57,16 +57,4 @@ return [
 
     'backup_filename_format' => 'backup_{date}_{time}',
 
-    /*
-    |--------------------------------------------------------------------------
-    | Max Backup Files
-    |--------------------------------------------------------------------------
-    |
-    | Specify the maximum number of backup files to keep.
-    | When the limit is reached, the oldest backup file will be deleted.
-    |
-    */
-
-    'max_backup_files' => 10,
-
 ];
