@@ -36,7 +36,7 @@ class BackupService
             if ($file->getExtension() === 'zip') {
                 $backups[] = [
                     'name' => $file->getFilename(),
-                    'size' => Number::fileSize($file->getSize()),
+                    'size' => Number::fileSize($file->getSize(), 0, 3),
                     'created' => $file->getCTime(),
                     'modified' => $file->getMTime(),
                 ];
@@ -68,7 +68,7 @@ class BackupService
 
         Cache::put('statamic-content-backup.backup_job_runningName', $backupFileName);
 
-        if( File::exists($finalBackupPath) ) {
+        if( $this->checkBackupExists($backupFileName) ) {
             throw new BackupWithSameNameException($backupFileName);
         }
 
@@ -168,7 +168,7 @@ class BackupService
         $backupFolder = $this->getBackupFolder();
         $backupPath = $backupFolder . '/' . $backupName;
 
-        if (!File::exists($backupPath)) {
+        if (!$this->checkBackupExists($backupName)) {
             throw new BackupDeletionException('Backup file does not exist');
         }
         if (!File::delete($backupPath)) {
@@ -229,20 +229,23 @@ class BackupService
         $backupFolder = $this->getBackupFolder();
         $backupFilePath = $backupFolder . DIRECTORY_SEPARATOR . $backupName;
 
-        if (!File::exists($backupFilePath)) {
+        if (!$this->checkBackupExists($backupName)) {
             throw new BackupNotFoundException('Backup file not found: ' . $backupFilePath);
         }
 
         return $backupFilePath;
     }
 
+    public function checkBackupExists(string $backupName): bool {
+        $backupFolder = $this->getBackupFolder();
+        $backupFilePath = $backupFolder . DIRECTORY_SEPARATOR . $backupName;
+
+        return File::exists($backupFilePath);
+    }
+
     public function saveUploadedBackup($file): string {
         $backupFolder = $this->getBackupFolder();
         $filePath = $backupFolder . '/' . $file->getClientOriginalName();
-
-        // if (File::exists($filePath)) {
-        //     throw new BackupWithSameNameException($file->getClientOriginalName());
-        // }
 
         if (!File::move($file->getRealPath(), $filePath)) {
             throw new \Exception('Error saving uploaded backup file');

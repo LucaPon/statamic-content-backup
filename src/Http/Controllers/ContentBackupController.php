@@ -5,6 +5,8 @@ namespace LucaPon\StatamicContentBackup\Http\Controllers;
 use LucaPon\StatamicContentBackup\Jobs\BackupJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
+use LucaPon\StatamicContentBackup\Http\Exceptions\BackupWithSameNameException;
 use LucaPon\StatamicContentBackup\Http\Requests\DeleteBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Requests\DownloadBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Requests\RestoreBackupRequest;
@@ -98,6 +100,18 @@ class ContentBackupController extends Controller
         }
 
         $handler = $recived->handler();
+
+        if($handler->isFirstChunk()){
+            $file = $recived->getFile()->getClientOriginalName();
+            if($this->backupService->checkBackupExists($file)){
+                //abort the upload and clean up
+                $this->backupService->cleanUp();
+                return response()->json([
+                    "error" => "Backup with the same name already exists."
+                ], 400);
+            }
+        }
+
         return response()->json([
             "progress" => $handler->getPercentageDone()
         ]);

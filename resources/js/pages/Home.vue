@@ -330,11 +330,14 @@ export default defineComponent({
         resumable.upload();
       });
 
-      resumable.on("error", () => {
+      resumable.on("error", (data) => {
+        const error = JSON.parse(data).error || "Error uploading backup";
         this.uploadLoading = false;
         this.uploadProgress = 0;
         this.loadBackups();
-        this.$toast.error("Error uploading backup");
+        console.error("Error uploading backup:", error);
+        this.$toast.error(error);
+        resumable.cancel();
       });
 
       resumable.on("fileSuccess", (file, message) => {
