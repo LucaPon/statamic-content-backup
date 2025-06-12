@@ -32,6 +32,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Backup Folder
+    |--------------------------------------------------------------------------
+    |
+    | Specify the folder where backups will be stored.
+    | Ensure that the folder is writable by the web server.
+    |
+    */
+
+    'backup_folder' => storage_path('app/backups'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Backup Filename Format
     |--------------------------------------------------------------------------
     |

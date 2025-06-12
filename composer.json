@@ -1,27 +1,27 @@
 {
-    "name": "lucapon/statamic-content-backup",
-    "description": "Statamic Content Backup is a Statamic addon that allows control panel users to download and restore content backups easily.",
-    "license": "MIT",
-    "require": {
-        "ext-zip": "*",
-        "spatie/db-dumper": "^3.7",
-        "tightenco/ziggy": "^2.5",
-        "pion/laravel-chunk-upload": "^1.5"
-    },
-    "autoload": {
-        "psr-4": {
-            "LucaPon\\StatamicContentBackup\\": "src"
-        }
-    },
-    "extra": {
-        "statamic": {
-            "name": "Statamic Content Backup",
-            "description": "Statamic Content Backup is a Statamic addon that allows control panel users to download and restore content backups easily."
-        },
-        "laravel": {
-            "providers": [
-                "LucaPon\\StatamicContentBackup\\ServiceProvider"
-            ]
-        }
+  "name": "lucapon/statamic-content-backup",
+  "description": "Statamic Content Backup is a Statamic addon that allows control panel users to create, download, upload and restore content backups easily.",
+  "license": "MIT",
+  "require": {
+    "ext-zip": "*",
+    "spatie/db-dumper": "^3.7",
+    "tightenco/ziggy": "^2.5",
+    "pion/laravel-chunk-upload": "^1.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "LucaPon\\StatamicContentBackup\\": "src"
     }
+  },
+  "extra": {
+    "statamic": {
+      "name": "Statamic Content Backup",
+      "description": "Statamic Content Backup is a Statamic addon that allows control panel users to create, download, upload and restore content backups easily."
+    },
+    "laravel": {
+      "providers": [
+        "LucaPon\\StatamicContentBackup\\ServiceProvider"
+      ]
+    }
+  }
 }
