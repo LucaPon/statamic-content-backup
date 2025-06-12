@@ -353,6 +353,14 @@ export default defineComponent({
         return;
       }
 
+      if (
+        !confirm(
+          "Are you sure you want to restore this backup? This will overwrite your current content."
+        )
+      ) {
+        return;
+      }
+
       this.restoreRunning = backupName;
 
       try {
