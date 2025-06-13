@@ -72,7 +72,7 @@
                   v-tooltip="'Restore'"
                   @click="restoreBackup(backup.name)"
                 >
-                  <RestoreIcon v-if="downloadLoading != backup.name" />
+                  <RestoreIcon v-if="restoreRunning != backup.name" />
                   <LoadingIcon v-else class="animate-spin" />
                 </button>
                 <button
