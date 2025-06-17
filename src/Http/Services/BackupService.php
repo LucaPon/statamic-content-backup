@@ -227,7 +227,7 @@ class BackupService
 
     public function getBackupFilePath(string $backupName): string {
         $backupFolder = $this->getBackupFolder();
-        $backupFilePath = $backupFolder . DIRECTORY_SEPARATOR . $backupName;
+        $backupFilePath = $backupFolder . '/' . $backupName;
 
         if (!$this->checkBackupExists($backupName)) {
             throw new BackupNotFoundException('Backup file not found: ' . $backupFilePath);
@@ -238,7 +238,7 @@ class BackupService
 
     public function checkBackupExists(string $backupName): bool {
         $backupFolder = $this->getBackupFolder();
-        $backupFilePath = $backupFolder . DIRECTORY_SEPARATOR . $backupName;
+        $backupFilePath = $backupFolder . '/' . $backupName;
 
         return File::exists($backupFilePath);
     }
@@ -272,7 +272,7 @@ class BackupService
     }
 
     private function getTempFolder(): string {
-        $tempFolder = config()->get('statamic-content-backup.backup_folder') . DIRECTORY_SEPARATOR . $this->tempFolderName;
+        $tempFolder = config()->get('statamic-content-backup.backup_folder') . '/' . $this->tempFolderName;
         if (!File::exists($tempFolder)) {
             File::makeDirectory($tempFolder, recursive: true);
         }
