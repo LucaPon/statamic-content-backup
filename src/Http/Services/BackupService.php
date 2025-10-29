@@ -114,7 +114,7 @@ class BackupService
         foreach ($includeFiles as $file) {
             $filePath = base_path($file);
             if(File::exists($filePath)) {
-                $this->addToZip($filePath, $zip, $this->filesBasePath . $file);
+                $this->addToZip($filePath, $zip, $this->filesBasePath . '/' . $file);
             }else {
                 Log::warning("File or directory not found: $filePath");
             }
