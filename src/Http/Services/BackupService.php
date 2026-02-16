@@ -142,26 +142,32 @@ class BackupService
 
         $databaseConnection = config()->get('database.default');
         $databaseDriver = config()->get('database.connections.' . $databaseConnection . '.driver');
+        $dbConfigPrefix = 'database.connections.' . $databaseConnection;
 
-        if($databaseDriver === 'mysql') {
-
-            $dbConfigPrefix = 'database.connections.' . $databaseConnection;
-            $dbName = config()->get( $dbConfigPrefix . '.database');
-            $dbHost = config()->get( $dbConfigPrefix . '.host');
-            $dbPort = config()->get( $dbConfigPrefix . '.port');
-            $userName = config()->get( $dbConfigPrefix . '.username');
-            $password = config()->get( $dbConfigPrefix . '.password');
-
+        if ($databaseDriver === 'mysql') {
             return \Spatie\DbDumper\Databases\MySql::create()
-                ->setDbName($dbName)
-                ->setHost($dbHost)
-                ->setPort($dbPort)
-                ->setUserName($userName)
-                ->setPassword($password);
-
-        }else {
-            throw new UnsupportedDatabaseDriverException($databaseDriver);
+                ->setDbName(config()->get($dbConfigPrefix . '.database'))
+                ->setHost(config()->get($dbConfigPrefix . '.host'))
+                ->setPort(config()->get($dbConfigPrefix . '.port'))
+                ->setUserName(config()->get($dbConfigPrefix . '.username'))
+                ->setPassword(config()->get($dbConfigPrefix . '.password'));
         }
+
+        if ($databaseDriver === 'pgsql') {
+            return \Spatie\DbDumper\Databases\PostgreSql::create()
+                ->setDbName(config()->get($dbConfigPrefix . '.database'))
+                ->setHost(config()->get($dbConfigPrefix . '.host'))
+                ->setPort(config()->get($dbConfigPrefix . '.port'))
+                ->setUserName(config()->get($dbConfigPrefix . '.username'))
+                ->setPassword(config()->get($dbConfigPrefix . '.password'));
+        }
+
+        if ($databaseDriver === 'sqlite') {
+            return \Spatie\DbDumper\Databases\Sqlite::create()
+                ->setDbName(config()->get($dbConfigPrefix . '.database'));
+        }
+
+        throw new UnsupportedDatabaseDriverException($databaseDriver);
     }
 
     public function deleteBackup($backupName): void {
