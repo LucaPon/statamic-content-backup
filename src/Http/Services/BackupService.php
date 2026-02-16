@@ -207,11 +207,19 @@ class BackupService
                 }
             }
 
-            foreach( $includeTables as $table){
-                $tableDumpPath = $tempFolder . '/' . $this->databaseBasePath . '/' . $table . '.sql';
-                if(File::exists($tableDumpPath)) {
-                    DB::unprepared(File::get($tableDumpPath));
+            DB::beginTransaction();
+            try {
+                foreach( $includeTables as $table){
+                    $tableDumpPath = $tempFolder . '/' . $this->databaseBasePath . '/' . $table . '.sql';
+                    if(File::exists($tableDumpPath)) {
+                        DB::unprepared(File::get($tableDumpPath));
+                    }
                 }
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                $this->cleanup();
+                throw $e;
             }
 
             $this->cleanup();
