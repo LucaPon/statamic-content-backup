@@ -80,8 +80,7 @@
                   v-tooltip="'Download'"
                   @click="downloadBackup(backup.name)"
                 >
-                  <DownloadIcon v-if="downloadLoading != backup.name" />
-                  <LoadingIcon v-else class="animate-spin" />
+                  <DownloadIcon />
                 </button>
                 <button
                   v-tooltip="'Delete'"
@@ -146,7 +145,6 @@ export default defineComponent({
       backupsLoading: false,
       backupRunning: false,
       runningBackupName: null,
-      downloadLoading: null,
       uploadLoading: false,
       uploadProgress: 0,
       restoreRunning: null,
@@ -274,45 +272,12 @@ export default defineComponent({
         this.$toast.error("Error deleting backup");
       }
     },
-    async downloadBackup(backupName) {
-      if (this.downloadLoading) {
-        return; // Prevent multiple downloads
-      }
-      this.downloadLoading = backupName;
+    downloadBackup(backupName) {
+      const url = route("statamic.cp.statamic-content-backup.downloadBackup", {
+        name: backupName,
+      });
 
-      try {
-        const response = await fetch(
-          route("statamic.cp.statamic-content-backup.downloadBackup", {
-            name: backupName,
-          })
-        );
-
-        if (!response.ok) {
-          throw new Error("Error downloading file");
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const fileName = response.headers
-          .get("Content-Disposition")
-          .split("filename=")[1]
-          .replace(/"/g, "");
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        window.URL.revokeObjectURL(url);
-      } catch (error) {
-        this.$toast.error("Error downloading backup");
-        console.error("Error downloading backup:", error);
-      } finally {
-        this.downloadLoading = null;
-      }
+      window.location.href = url;
     },
     uploadBackup() {
       this.$refs.fileInput.click();
