@@ -124,9 +124,16 @@ export default defineComponent({
     this.loadBackups();
     this.loadJobStatus();
 
-    setInterval(() => {
+    this.statusInterval = setInterval(() => {
       this.loadJobStatus();
     }, 1000);
+  },
+
+  beforeUnmount() {
+    if (this.statusInterval) {
+      clearInterval(this.statusInterval);
+      this.statusInterval = null;
+    }
   },
 
   props: {
@@ -143,6 +150,7 @@ export default defineComponent({
       uploadLoading: false,
       uploadProgress: 0,
       restoreRunning: null,
+      statusInterval: null,
     };
   },
 
