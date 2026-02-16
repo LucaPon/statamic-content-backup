@@ -24,7 +24,7 @@ class RestoreBackupRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'regex:/\.zip$/'],
+            'name' => ['required', 'string', 'regex:/^[a-zA-Z0-9_\-\.]+\.zip$/'],
         ];
     }
 }
