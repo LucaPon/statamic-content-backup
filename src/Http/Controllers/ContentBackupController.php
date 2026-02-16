@@ -95,6 +95,7 @@ class ContentBackupController extends Controller
             catch (\Exception $e) {
                 report($e);
                 $this->backupService->cleanUp();
+                return response()->json(['error' => 'Failed to save uploaded backup'], 500);
             }
 
         }
