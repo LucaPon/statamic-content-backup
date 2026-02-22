@@ -61,3 +61,5 @@ Version `4.x` requires **Statamic 6** (and Laravel 12). It is not compatible wit
 ```bash
 composer require lucapon/statamic-content-backup:^4.0
 ```
+
+**Permissions:** In v3, the addon used a custom permission (`statamic-content-backup-permission`). In v4, permissions are managed automatically by Statamic's utility system. The permission is now `access content_backup utility` and can be configured under **Users > Roles > Utilities** in the control panel.
