@@ -84,25 +84,26 @@ class ContentBackupController extends Controller
             throw new UploadMissingFileException();
         }
 
-        $recived = $receiver->receive();
+        $received = $receiver->receive();
 
-        if ($recived->isFinished()) {
+        if ($received->isFinished()) {
 
             try {
-                $file = $recived->getFile();
+                $file = $received->getFile();
                 $this->backupService->saveUploadedBackup($file);
             }
             catch (\Exception $e) {
                 report($e);
                 $this->backupService->cleanUp();
+                return response()->json(['error' => 'Failed to save uploaded backup'], 500);
             }
 
         }
 
-        $handler = $recived->handler();
+        $handler = $received->handler();
 
         if($handler->isFirstChunk()){
-            $file = $recived->getFile()->getClientOriginalName();
+            $file = $received->getFile()->getClientOriginalName();
             if($this->backupService->checkBackupExists($file)){
                 //abort the upload and clean up
                 $this->backupService->cleanUp();
