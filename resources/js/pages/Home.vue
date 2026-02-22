@@ -1,131 +1,200 @@
 <template>
-  <div>
-    <h1>Backup</h1>
+  <div class="max-w-page mx-auto">
+    <Head :title="['Content Backup', __('Utilities')]" />
 
-    <div class="flex gap-3">
-      <button
-        class="flex items-center gap-2 px-4 py-2 mt-4 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+    <ui-header :title="__('Content Backup')" icon="package-box-crate">
+      <ui-button
+        :loading="creatingBackup || backupRunning"
+        variant="primary"
+        icon="save"
         @click="createBackup"
       >
-        <BackupIcon class="w-4" v-if="!backupRunning" />
-        <LoadingIcon class="w-4 animate-spin" v-else />
-        {{ backupRunning ? "Creating Backup..." : "Create Backup" }}
-      </button>
-      <button
-        ref="uploadButton"
-        @click="uploadBackup"
-        class="flex items-center gap-2 px-4 py-2 mt-4 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+        {{
+          creatingBackup || backupRunning
+            ? __("Creating Backup...")
+            : __("Create Backup")
+        }}
+      </ui-button>
+
+      <input
+        ref="uploadInput"
+        type="file"
+        class="hidden"
+        accept=".zip,application/zip"
+        @change="handleUploadSelected"
+      />
+
+      <ui-button
+        :loading="uploadLoading"
+        icon="upload-cloud"
+        @click="triggerUpload"
       >
-        <UploadIcon class="w-4" v-if="!uploadLoading" />
-        <LoadingIcon class="w-4 animate-spin" v-else />
-        Upload Backup
-        <span v-if="uploadLoading">({{ uploadProgress }}%)</span>
-      </button>
-    </div>
+        {{
+          uploadLoading
+            ? __("Uploading") + " (" + uploadProgress + "%)"
+            : __("Upload Backup")
+        }}
+      </ui-button>
+    </ui-header>
 
-    <div class="p-0 mt-3 overflow-hidden card">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th class="rounded-none group current-column sortable-column">
-              <span>Name</span>
-            </th>
-            <th class="rounded-none group current-column sortable-column">
-              <span>Size</span>
-            </th>
-            <th class="rounded-none group current-column sortable-column">
-              <span>Created at</span>
-            </th>
-            <th class="rounded-none actions-column"></th>
-          </tr>
-        </thead>
-        <tbody class="text-gray-800 dark:text-dark-175">
-          <tr v-if="!runningBackupName && backups.length === 0" class="">
-            <td class="">No backups found</td>
-          </tr>
+    <ui-panel class="h-full flex flex-col">
+      <ui-panel-header class="flex items-center justify-between min-h-10">
+        <div class="flex items-center gap-2">
+          <div class="flex gap-2 flex-col">
+            <ui-heading>{{ __("Backups") }}</ui-heading>
+            <ui-description>
+              Create, upload, download, and restore full content backups
+              directly from the control panel.
+            </ui-description>
+          </div>
 
-          <tr v-if="runningBackupName" class="">
-            <td class="">{{ runningBackupName }}</td>
-            <td class=""></td>
-            <td class=""></td>
-            <td class="">
-              <LoadingIcon class="float-right w-4 h-4 animate-spin" />
-            </td>
-          </tr>
+          <ui-badge
+            v-if="runningBackupName"
+            color="blue"
+            icon="loading"
+            :text="runningBackupName"
+          />
+        </div>
 
-          <tr v-for="(backup, index) in backups" :key="index">
-            <td class="">{{ backup.name }}</td>
-            <td class="">{{ backup.size }}</td>
-            <td class="">
-              {{ new Date(backup.created * 1000).toLocaleDateString() }}
-              {{
-                new Date(backup.created * 1000).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              }}
-            </td>
-            <td class="">
-              <div class="flex gap-2 min-w-max">
-                <button
-                  class="w-4 h-4 cursor-pointer"
-                  v-tooltip="'Restore'"
-                  @click="restoreBackup(backup.name)"
-                >
-                  <RestoreIcon v-if="restoreRunning != backup.name" />
-                  <LoadingIcon v-else class="animate-spin" />
-                </button>
-                <button
-                  class="relative w-4 h-4 cursor-pointer"
-                  v-tooltip="'Download'"
-                  @click="downloadBackup(backup.name)"
-                >
-                  <DownloadIcon />
-                </button>
-                <button
-                  v-tooltip="'Delete'"
-                  @click="deleteBackup(backup.name)"
-                  class="relative w-4 h-4 cursor-pointer"
-                >
-                  <DeleteIcon class="text-red-600" />
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <ui-badge :prepend="__('Total')">{{ backups.length }}</ui-badge>
+      </ui-panel-header>
+
+      <ui-card inset class="flex-1 overflow-hidden">
+        <div class="pt-4">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="rounded-none group current-column sortable-column">
+                  <span>{{ __("Name") }}</span>
+                </th>
+                <th class="rounded-none group current-column sortable-column">
+                  <span>{{ __("Size") }}</span>
+                </th>
+                <th class="rounded-none group current-column sortable-column">
+                  <span>{{ __("Created at") }}</span>
+                </th>
+                <th class="rounded-none actions-column"></th>
+              </tr>
+            </thead>
+            <tbody class="text-gray-800 dark:text-dark-175">
+              <tr v-if="!runningBackupName && backups.length === 0">
+                <td colspan="4">{{ __("No backups found") }}</td>
+              </tr>
+
+              <tr v-if="runningBackupName">
+                <td>{{ runningBackupName }}</td>
+                <td></td>
+                <td></td>
+                <td>
+                  <div class="flex items-center justify-end">
+                    <ui-icon
+                      name="loading"
+                      class="size-4 animate-spin text-gray-500"
+                    />
+                  </div>
+                </td>
+              </tr>
+
+              <tr v-for="backup in backups" :key="backup.name">
+                <td>{{ backup.name }}</td>
+                <td>{{ backup.size }}</td>
+                <td>
+                  {{ new Date(backup.created * 1000).toLocaleDateString() }}
+                  {{
+                    new Date(backup.created * 1000).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  }}
+                </td>
+                <td>
+                  <div class="flex items-center justify-end gap-2">
+                    <ui-button
+                      size="base"
+                      round
+                      icon-only
+                      variant="subtle"
+                      :loading="restoreRunning === backup.name"
+                      :icon="restoreRunning === backup.name ? null : 'history'"
+                      :aria-label="__('Restore')"
+                      v-tooltip="__('Restore')"
+                      @click="restoreBackup(backup.name)"
+                    />
+
+                    <ui-button
+                      size="base"
+                      round
+                      icon-only
+                      variant="subtle"
+                      icon="download"
+                      :aria-label="__('Download')"
+                      v-tooltip="__('Download')"
+                      @click="downloadBackup(backup.name)"
+                    />
+
+                    <ui-button
+                      size="base"
+                      round
+                      icon-only
+                      variant="subtle"
+                      icon="trash"
+                      :aria-label="__('Delete')"
+                      v-tooltip="__('Delete')"
+                      @click="deleteBackup(backup.name)"
+                    />
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ui-card>
+    </ui-panel>
   </div>
 </template>
 
 <script>
-import Resumable from "resumablejs";
 import { defineComponent } from "vue";
-import LoadingIcon from "../../icons/LoadingIcon.vue";
-import DownloadIcon from "../../icons/DownloadIcon.vue";
-import DeleteIcon from "../../icons/DeleteIcon.vue";
-import RestoreIcon from "../../icons/RestoreIcon.vue";
-import BackupIcon from "../../icons/BackupIcon.vue";
-import UploadIcon from "../../icons/UploadIcon.vue";
+import { Head } from "@statamic/cms/inertia";
 
 export default defineComponent({
   name: "Home",
   components: {
-    LoadingIcon,
-    DownloadIcon,
-    DeleteIcon,
-    RestoreIcon,
-    BackupIcon,
-    UploadIcon,
+    Head,
   },
+
+  props: {
+    token: { type: String, required: true },
+    listUrl: { type: String, required: true },
+    statusUrl: { type: String, required: true },
+    createUrl: { type: String, required: true },
+    deleteUrl: { type: String, required: true },
+    downloadUrl: { type: String, required: true },
+    uploadUrl: { type: String, required: true },
+    restoreUrl: { type: String, required: true },
+  },
+
+  data() {
+    return {
+      backups: [],
+      backupsLoading: false,
+      backupRunning: false,
+      creatingBackup: false,
+      runningBackupName: null,
+      uploadLoading: false,
+      uploadProgress: 0,
+      restoreRunning: null,
+      statusInterval: null,
+    };
+  },
+
   mounted() {
-    this.initResumable();
     this.loadBackups();
     this.loadJobStatus();
 
     this.statusInterval = setInterval(() => {
       this.loadJobStatus();
-    }, 1000);
+    }, 2000);
   },
 
   beforeUnmount() {
@@ -135,36 +204,13 @@ export default defineComponent({
     }
   },
 
-  props: {
-    token: String,
-  },
-
-  data() {
-    return {
-      backups: [],
-      backupsLoading: false,
-      backupRunning: false,
-      runningBackupName: null,
-      uploadLoading: false,
-      uploadProgress: 0,
-      restoreRunning: null,
-      statusInterval: null,
-    };
-  },
-
   methods: {
     async loadBackups() {
       this.backupsLoading = true;
 
       try {
-        const response = await fetch(
-          route("statamic.cp.statamic-content-backup.list")
-        );
-
-        if (!response.ok) {
-          throw new Error("Error loading backups");
-        }
-
+        const response = await fetch(this.listUrl);
+        if (!response.ok) throw new Error("Error loading backups");
         const data = await response.json();
         this.backups = data || [];
       } catch (error) {
@@ -174,96 +220,86 @@ export default defineComponent({
         this.backupsLoading = false;
       }
     },
+
     async loadJobStatus() {
-      if (!this.backupRunning) {
-        return;
-      }
-
       try {
-        const response = await fetch(
-          route("statamic.cp.statamic-content-backup.status")
-        );
-
-        if (!response.ok) {
-          throw new Error("Error retrieving job status");
-        }
+        const response = await fetch(this.statusUrl);
+        if (!response.ok) throw new Error("Error retrieving job status");
 
         const data = await response.json();
 
         if (data.error) {
           this.runningBackupName = null;
           this.backupRunning = false;
-
+          this.creatingBackup = false;
           this.$toast.error(data.error);
           this.loadBackups();
-        } else if (data.success) {
+          return;
+        }
+
+        if (data.success) {
           this.runningBackupName = null;
           this.backupRunning = false;
+          this.creatingBackup = false;
           this.$toast.success(
-            "Backup created successfully (" + data.success + ")"
+            "Backup created successfully (" + data.success + ")",
           );
           this.loadBackups();
+          return;
         }
 
         if (data.runningName) {
           this.runningBackupName = data.runningName;
-        } else {
-          this.runningBackupName = null;
+          this.backupRunning = true;
+          this.creatingBackup = false;
+          return;
+        }
+
+        this.runningBackupName = null;
+        if (!this.creatingBackup) {
+          this.backupRunning = false;
         }
       } catch (error) {
         console.error("Error loading job status:", error);
       }
     },
-    async createBackup() {
-      if (this.backupRunning) {
-        this.$toast.info("A backup is already running");
-        return;
-      }
 
+    async createBackup() {
+      if (this.creatingBackup || this.backupRunning) return;
+
+      this.creatingBackup = true;
       this.backupRunning = true;
 
-      fetch(route("statamic.cp.statamic-content-backup.createBackup"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": this.token,
-        },
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Error creating backup");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          this.loadJobStatus();
-        })
-        .catch((error) => {
-          console.error("Error creating backup:", error);
-          this.$toast.error("Error creating backup");
-        });
-    },
-    async deleteBackup(backupName) {
-      if (!confirm("Are you sure you want to delete this backup?")) {
-        return;
+      try {
+        await this.$axios.post(this.createUrl);
+        await this.loadJobStatus();
+      } catch (error) {
+        console.error("Error creating backup:", error);
+        const message =
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Error creating backup";
+        this.$toast.error(message);
+        this.creatingBackup = false;
+        this.backupRunning = false;
       }
+    },
+
+    async deleteBackup(backupName) {
+      if (!confirm("Are you sure you want to delete this backup?")) return;
 
       try {
         const response = await fetch(
-          route("statamic.cp.statamic-content-backup.deleteBackup", {
-            name: backupName,
-          }),
+          this.withBackupName(this.deleteUrl, backupName),
           {
             method: "DELETE",
             headers: {
               "X-CSRF-TOKEN": this.token,
             },
-          }
+          },
         );
 
-        if (!response.ok) {
-          throw new Error("Error deleting backup");
-        }
+        if (!response.ok) throw new Error("Error deleting backup");
 
         this.$toast.success("Backup deleted successfully");
         this.loadBackups();
@@ -272,54 +308,69 @@ export default defineComponent({
         this.$toast.error("Error deleting backup");
       }
     },
+
     downloadBackup(backupName) {
-      const url = route("statamic.cp.statamic-content-backup.downloadBackup", {
-        name: backupName,
-      });
-
-      window.location.href = url;
+      window.location.href = this.withBackupName(this.downloadUrl, backupName);
     },
-    uploadBackup() {
-      this.$refs.fileInput.click();
+
+    triggerUpload() {
+      if (this.uploadLoading) return;
+      this.$refs.uploadInput?.click();
     },
-    initResumable() {
-      const resumable = new Resumable({
-        target: route("statamic.cp.statamic-content-backup.uploadBackup"),
-        query: { _token: this.token },
-        fileType: ["zip"],
-        simultaneousUploads: 1,
-        maxFiles: 1,
-        testChunks: false,
-      });
 
-      resumable.assignBrowse(this.$refs.uploadButton);
+    handleUploadSelected(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
 
-      resumable.on("fileProgress", (file) => {
-        this.uploadProgress = Math.floor(file.progress() * 100);
-      });
+      this.uploadLoading = true;
+      this.uploadProgress = 0;
 
-      resumable.on("fileAdded", (file, event) => {
-        this.uploadLoading = true;
-        resumable.upload();
-      });
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("_token", this.token);
 
-      resumable.on("error", (data) => {
-        const error = JSON.parse(data).error || "Error uploading backup";
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", this.uploadUrl, true);
+      xhr.setRequestHeader("X-CSRF-TOKEN", this.token);
+      xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+
+      xhr.upload.onprogress = (progressEvent) => {
+        if (!progressEvent.lengthComputable) return;
+        this.uploadProgress = Math.floor(
+          (progressEvent.loaded / progressEvent.total) * 100,
+        );
+      };
+
+      xhr.onload = () => {
         this.uploadLoading = false;
         this.uploadProgress = 0;
         this.loadBackups();
-        console.error("Error uploading backup:", error);
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          this.$toast.success("Backup uploaded successfully");
+          if (event?.target) event.target.value = "";
+          return;
+        }
+
+        let error = "Error uploading backup";
+        try {
+          const payload = JSON.parse(xhr.responseText || "{}");
+          error = payload.error || error;
+        } catch (_) {
+          // Keep fallback message when payload isn't JSON.
+        }
         this.$toast.error(error);
-        resumable.cancel();
-      });
+      };
 
-      resumable.on("fileSuccess", (file, message) => {
+      xhr.onerror = () => {
         this.uploadLoading = false;
         this.uploadProgress = 0;
-        this.loadBackups();
-        this.$toast.success("Backup uploaded successfully");
-      });
+        this.$toast.error("Error uploading backup");
+      };
+
+      xhr.send(formData);
     },
+
     async restoreBackup(backupName) {
       if (this.restoreRunning) {
         this.$toast.info("A restore is already running");
@@ -328,7 +379,7 @@ export default defineComponent({
 
       if (
         !confirm(
-          "Are you sure you want to restore this backup? This will overwrite your current content."
+          "Are you sure you want to restore this backup? This will overwrite your current content.",
         )
       ) {
         return;
@@ -338,20 +389,16 @@ export default defineComponent({
 
       try {
         const response = await fetch(
-          route("statamic.cp.statamic-content-backup.restoreBackup", {
-            name: backupName,
-          }),
+          this.withBackupName(this.restoreUrl, backupName),
           {
             method: "POST",
             headers: {
               "X-CSRF-TOKEN": this.token,
             },
-          }
+          },
         );
 
-        if (!response.ok) {
-          throw new Error("Error restoring backup");
-        }
+        if (!response.ok) throw new Error("Error restoring backup");
 
         this.$toast.success("Backup restored successfully");
         this.loadBackups();
@@ -361,6 +408,12 @@ export default defineComponent({
       } finally {
         this.restoreRunning = null;
       }
+    },
+
+    withBackupName(url, backupName) {
+      const endpoint = new URL(url, window.location.origin);
+      endpoint.searchParams.set("name", backupName);
+      return endpoint.toString();
     },
   },
 });
