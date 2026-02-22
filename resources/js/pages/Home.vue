@@ -42,10 +42,9 @@
         <div class="flex items-center gap-2">
           <div class="flex gap-2 flex-col">
             <ui-heading>{{ __("Backups") }}</ui-heading>
-            <ui-description>
-              Create, upload, download, and restore full content backups
-              directly from the control panel.
-            </ui-description>
+            <ui-description
+              text="Create, upload, download, and restore full content backups directly from the control panel."
+            />
           </div>
 
           <ui-badge
