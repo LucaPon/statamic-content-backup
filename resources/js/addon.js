@@ -1,7 +1,7 @@
 
-
 import Home from "./pages/Home.vue";
 
 Statamic.booting(() => {
-    Statamic.$components.register("home", Home);
+    Statamic.$components.register("content-backup-home", Home);
+    Statamic.$inertia.register("statamic-content-backup::ContentBackupUtility", Home);
 });

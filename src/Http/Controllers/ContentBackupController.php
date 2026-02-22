@@ -3,10 +3,6 @@
 namespace LucaPon\StatamicContentBackup\Http\Controllers;
 
 use LucaPon\StatamicContentBackup\Jobs\BackupJob;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
-use LucaPon\StatamicContentBackup\Http\Exceptions\BackupWithSameNameException;
 use LucaPon\StatamicContentBackup\Http\Requests\DeleteBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Requests\DownloadBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Requests\RestoreBackupRequest;
@@ -23,11 +19,6 @@ class ContentBackupController extends Controller
     public function __construct(BackupService $backupService)
     {
         $this->backupService = $backupService;
-    }
-
-    public function index()
-    {
-        return view('statamic-content-backup::index');
     }
 
     public function listBackups()
