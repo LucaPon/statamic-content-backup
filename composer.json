@@ -6,8 +6,7 @@
     "ext-zip": "*",
     "statamic/cms": "^6.0",
     "spatie/db-dumper": "^3.7",
-    "tightenco/ziggy": "^2.5",
-    "pion/laravel-chunk-upload": "^1.5"
+"pion/laravel-chunk-upload": "^1.5"
   },
   "autoload": {
     "psr-4": {
