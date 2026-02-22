@@ -194,36 +194,60 @@ class BackupService
 
         try {
             $tempFolder = $this->getTempFolder();
+            $rollbackFolder = $tempFolder . '/rollback';
+            File::ensureDirectoryExists($rollbackFolder);
+
             $zip->extractTo($tempFolder);
             $zip->close();
 
+            // Move original files to rollback folder
             foreach ($includeFiles as $file) {
-                $tempFile = $tempFolder . '/' . $this->filesBasePath . '/' . $file;
                 $oldFile = base_path($file);
-                if(File::exists($tempFile)) {
-
-                    if (File::isDirectory($oldFile)) {
-                        File::deleteDirectory($oldFile);
-                    }
-                    if (File::isFile($oldFile)) {
-                        File::delete($oldFile);
-                    }
-
-                    File::move($tempFile, $oldFile);
+                if (File::exists($oldFile)) {
+                    $rollbackPath = $rollbackFolder . $file;
+                    File::ensureDirectoryExists(dirname($rollbackPath));
+                    File::move($oldFile, $rollbackPath);
                 }
             }
 
-            DB::beginTransaction();
+            // Replace files with backup versions
             try {
-                foreach( $includeTables as $table){
-                    $tableDumpPath = $tempFolder . '/' . $this->databaseBasePath . '/' . $table . '.sql';
-                    if(File::exists($tableDumpPath)) {
-                        DB::unprepared(File::get($tableDumpPath));
+                foreach ($includeFiles as $file) {
+                    $tempFile = $tempFolder . '/' . $this->filesBasePath . '/' . $file;
+                    $oldFile = base_path($file);
+                    if(File::exists($tempFile)) {
+                        File::move($tempFile, $oldFile);
                     }
                 }
-                DB::commit();
+
+                DB::beginTransaction();
+                try {
+                    foreach($includeTables as $table){
+                        $tableDumpPath = $tempFolder . '/' . $this->databaseBasePath . '/' . $table . '.sql';
+                        if(File::exists($tableDumpPath)) {
+                            DB::unprepared(File::get($tableDumpPath));
+                        }
+                    }
+                    DB::commit();
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    throw $e;
+                }
             } catch (\Exception $e) {
-                DB::rollBack();
+                // Rollback: restore original files
+                foreach ($includeFiles as $file) {
+                    $rollbackPath = $rollbackFolder . $file;
+                    $oldFile = base_path($file);
+                    if (File::exists($rollbackPath)) {
+                        if (File::isDirectory($oldFile)) {
+                            File::deleteDirectory($oldFile);
+                        }
+                        if (File::isFile($oldFile)) {
+                            File::delete($oldFile);
+                        }
+                        File::move($rollbackPath, $oldFile);
+                    }
+                }
                 $this->cleanup();
                 throw $e;
             }
