@@ -85,6 +85,17 @@ class ContentBackupController extends Controller
         }
 
         $received = $receiver->receive();
+        $handler = $received->handler();
+
+        if($handler->isFirstChunk()){
+            $file = $received->getFile()->getClientOriginalName();
+            if($this->backupService->checkBackupExists($file)){
+                $this->backupService->cleanUp();
+                return response()->json([
+                    "error" => "Backup with the same name already exists."
+                ], 400);
+            }
+        }
 
         if ($received->isFinished()) {
 
@@ -98,19 +109,6 @@ class ContentBackupController extends Controller
                 return response()->json(['error' => 'Failed to save uploaded backup'], 500);
             }
 
-        }
-
-        $handler = $received->handler();
-
-        if($handler->isFirstChunk()){
-            $file = $received->getFile()->getClientOriginalName();
-            if($this->backupService->checkBackupExists($file)){
-                //abort the upload and clean up
-                $this->backupService->cleanUp();
-                return response()->json([
-                    "error" => "Backup with the same name already exists."
-                ], 400);
-            }
         }
 
         return response()->json([
