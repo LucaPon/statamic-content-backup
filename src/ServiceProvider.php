@@ -57,8 +57,10 @@ class ServiceProvider extends AddonServiceProvider
 
     private function setConfig(): void
     {
-        $this->publishes([
-            __DIR__.'/../config/statamic-content-backup.php' => config_path('statamic-content-backup.php')
-        ], 'statamic-content-backup');
+        if (file_exists(config_path('statamic-content-backup.php')) === false) {
+            $this->publishes([
+                __DIR__.'/../config/statamic-content-backup.php' => config_path('statamic-content-backup.php')
+            ], 'statamic-content-backup');
+        }
     }
 }
