@@ -5,6 +5,7 @@
     <ui-header :title="__('Content Backup')" icon="package-box-crate">
       <ui-button
         :loading="creatingBackup || backupRunning"
+        :disabled="!!restoreRunning"
         variant="primary"
         icon="save"
         @click="createBackup"
@@ -114,6 +115,11 @@
                       icon-only
                       variant="subtle"
                       :loading="restoreRunning === backup.name"
+                      :disabled="
+                        creatingBackup ||
+                        backupRunning ||
+                        (!!restoreRunning && restoreRunning !== backup.name)
+                      "
                       :icon="restoreRunning === backup.name ? null : 'history'"
                       :aria-label="__('Restore')"
                       v-tooltip="__('Restore')"
@@ -273,7 +279,7 @@ export default defineComponent({
     },
 
     async createBackup() {
-      if (this.creatingBackup || this.backupRunning) return;
+      if (this.creatingBackup || this.backupRunning || this.restoreRunning) return;
 
       this.creatingBackup = true;
       this.backupRunning = true;
@@ -415,8 +421,8 @@ export default defineComponent({
     },
 
     async restoreBackup(backupName) {
-      if (this.restoreRunning) {
-        this.$toast.info("A restore is already running");
+      if (this.restoreRunning || this.creatingBackup || this.backupRunning) {
+        this.$toast.info("Another backup or restore is already running");
         return;
       }
 

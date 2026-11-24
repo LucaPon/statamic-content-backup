@@ -35,6 +35,5 @@ class RestoreJob implements ShouldQueue, ShouldBeUnique
     public function failed(Throwable $exception): void
     {
         $this->backupService->markRestoreFailed($exception->getMessage());
-        $this->backupService->cleanup();
     }
 }

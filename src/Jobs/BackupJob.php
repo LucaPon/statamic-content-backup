@@ -35,7 +35,6 @@ class BackupJob implements ShouldQueue, ShouldBeUnique
     public function failed(Throwable $exception): void
     {
         Cache::put('statamic-content-backup.backup_job_error', $exception->getMessage(), now()->addDay());
-        $this->backupService->cleanup();
     }
 
 

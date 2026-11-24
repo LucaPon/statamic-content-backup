@@ -12,6 +12,7 @@ use LucaPon\StatamicContentBackup\Http\Exceptions\BackupDeletionException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupNotFoundException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupWithSameNameException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\InvalidBackupException;
+use LucaPon\StatamicContentBackup\Http\Exceptions\OperationInProgressException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\UnsupportedDatabaseDriverException;
 use Statamic\Facades\Stache;
 use ZipArchive;
@@ -98,45 +99,43 @@ class BackupService
     }
 
     public function createBackup(): void {
-        $backupFileName = $this->generateBackupFileName();
-        $backupFolder = $this->getBackupFolder();
-        $finalBackupPath = $backupFolder . '/' . $backupFileName;
+        $this->withOperationLock(function () {
+            $backupFileName = $this->generateBackupFileName();
+            $backupFolder = $this->getBackupFolder();
+            $finalBackupPath = $backupFolder . '/' . $backupFileName;
 
-        Cache::put('statamic-content-backup.backup_job_runningName', $backupFileName, self::JOB_TIMEOUT);
+            Cache::put('statamic-content-backup.backup_job_runningName', $backupFileName, self::JOB_TIMEOUT);
 
-        if( $this->checkBackupExists($backupFileName) ) {
-            throw new BackupWithSameNameException($backupFileName);
-        }
+            if( $this->checkBackupExists($backupFileName) ) {
+                throw new BackupWithSameNameException($backupFileName);
+            }
 
-        $includeTables = config()->get('statamic-content-backup.include_tables');
-        $includeFiles = config()->get('statamic-content-backup.include_files');
+            $includeTables = config()->get('statamic-content-backup.include_tables');
+            $includeFiles = config()->get('statamic-content-backup.include_files');
 
-        $tempFolder = $this->getTempFolder();
-        $backupPath = $tempFolder . '/' . $backupFileName;
+            $tempFolder = $this->getTempFolder();
+            $backupPath = $tempFolder . '/' . $backupFileName;
 
-        $zip = new ZipArchive();
-        if ($zip->open($backupPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new BackupCreationException('Error creating backup file');
-        }
+            $zip = new ZipArchive();
+            if ($zip->open($backupPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new BackupCreationException('Error creating backup file');
+            }
 
-        $this->backupFiles($zip, $includeFiles);
-        $this->backupDatabaseTables($zip, $includeTables);
-        $zip->addFromString($this->manifestFileName, json_encode($this->buildManifest($includeFiles), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $this->backupFiles($zip, $includeFiles);
+            $this->backupDatabaseTables($zip, $includeTables);
+            $zip->addFromString($this->manifestFileName, json_encode($this->buildManifest($includeFiles), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-        if (!$zip->close()) {
-            throw new BackupCreationException('Error closing backup file');
-        }
+            if (!$zip->close()) {
+                throw new BackupCreationException('Error closing backup file');
+            }
 
-        if (!File::move($backupPath, $finalBackupPath)) {
-            throw new BackupCreationException('Error moving backup file to final destination');
-        }
+            if (!File::move($backupPath, $finalBackupPath)) {
+                throw new BackupCreationException('Error moving backup file to final destination');
+            }
 
-        $this->cleanup();
-
-
-        Cache::put('statamic-content-backup.backup_job_success', $backupFileName, now()->addDay());
-        Cache::forget('statamic-content-backup.backup_job_runningName');
-
+            Cache::put('statamic-content-backup.backup_job_success', $backupFileName, now()->addDay());
+            Cache::forget('statamic-content-backup.backup_job_runningName');
+        });
     }
 
     private function generateBackupFilename(): string {
@@ -278,6 +277,10 @@ class BackupService
     }
 
     public function restoreBackup($backupName): void {
+        $this->withOperationLock(fn () => $this->restoreFromBackup($backupName));
+    }
+
+    private function restoreFromBackup(string $backupName): void {
         $includeTables = config()->get('statamic-content-backup.include_tables');
         $includeFiles = config()->get('statamic-content-backup.include_files');
 
@@ -287,77 +290,68 @@ class BackupService
             throw new InvalidBackupException('The backup file is not a valid zip archive');
         }
 
+        $tempFolder = $this->getTempFolder();
+        $rollbackFolder = $tempFolder . '/rollback';
+        File::ensureDirectoryExists($rollbackFolder);
+
+        $zip->extractTo($tempFolder);
+        $zip->close();
+
+        $restorableFiles = $this->getRestorableFiles($tempFolder, $includeFiles);
+        $movedFiles = [];
+        $replacedFiles = [];
+
         try {
-            $tempFolder = $this->getTempFolder();
-            $rollbackFolder = $tempFolder . '/rollback';
-            File::ensureDirectoryExists($rollbackFolder);
-
-            $zip->extractTo($tempFolder);
-            $zip->close();
-
-            $restorableFiles = $this->getRestorableFiles($tempFolder, $includeFiles);
-            $movedFiles = [];
-            $replacedFiles = [];
-
-            try {
-                foreach (array_keys($restorableFiles) as $file) {
-                    $oldFile = base_path($file);
-                    if (File::exists($oldFile)) {
-                        $rollbackPath = $rollbackFolder . $file;
-                        File::ensureDirectoryExists(dirname($rollbackPath));
-                        if (!File::move($oldFile, $rollbackPath)) {
-                            throw new \Exception("Error moving $file to the rollback folder");
-                        }
-                        $movedFiles[] = $file;
+            foreach (array_keys($restorableFiles) as $file) {
+                $oldFile = base_path($file);
+                if (File::exists($oldFile)) {
+                    $rollbackPath = $rollbackFolder . $file;
+                    File::ensureDirectoryExists(dirname($rollbackPath));
+                    if (!File::move($oldFile, $rollbackPath)) {
+                        throw new \Exception("Error moving $file to the rollback folder");
                     }
+                    $movedFiles[] = $file;
                 }
-
-                foreach ($restorableFiles as $file => $type) {
-                    $tempFile = $tempFolder . '/' . $this->filesBasePath . $file;
-                    $oldFile = base_path($file);
-                    $replacedFiles[] = $file;
-
-                    if (File::exists($tempFile)) {
-                        File::ensureDirectoryExists(dirname($oldFile));
-                        if (!File::move($tempFile, $oldFile)) {
-                            throw new \Exception("Error restoring $file");
-                        }
-                    } elseif ($type === 'directory') {
-                        File::ensureDirectoryExists($oldFile);
-                    }
-                }
-
-                foreach($includeTables as $table){
-                    $tableDumpPath = $tempFolder . '/' . $this->databaseBasePath . '/' . $table . '.sql';
-                    if(File::exists($tableDumpPath)) {
-                        DB::unprepared(File::get($tableDumpPath));
-                    }
-                }
-            } catch (\Throwable $e) {
-                foreach ($replacedFiles as $file) {
-                    $oldFile = base_path($file);
-                    if (File::isDirectory($oldFile)) {
-                        File::deleteDirectory($oldFile);
-                    }
-                    if (File::isFile($oldFile)) {
-                        File::delete($oldFile);
-                    }
-                }
-                foreach ($movedFiles as $file) {
-                    File::move($rollbackFolder . $file, base_path($file));
-                }
-                $this->cleanup();
-                throw $e;
             }
 
-            $this->cleanup();
+            foreach ($restorableFiles as $file => $type) {
+                $tempFile = $tempFolder . '/' . $this->filesBasePath . $file;
+                $oldFile = base_path($file);
+                $replacedFiles[] = $file;
 
-            Stache::refresh();
+                if (File::exists($tempFile)) {
+                    File::ensureDirectoryExists(dirname($oldFile));
+                    if (!File::move($tempFile, $oldFile)) {
+                        throw new \Exception("Error restoring $file");
+                    }
+                } elseif ($type === 'directory') {
+                    File::ensureDirectoryExists($oldFile);
+                }
+            }
 
-        }catch (\Throwable $e) {
-            $this->cleanup();
+            foreach($includeTables as $table){
+                $tableDumpPath = $tempFolder . '/' . $this->databaseBasePath . '/' . $table . '.sql';
+                if(File::exists($tableDumpPath)) {
+                    DB::unprepared(File::get($tableDumpPath));
+                }
+            }
+        } catch (\Throwable $e) {
+            foreach ($replacedFiles as $file) {
+                $oldFile = base_path($file);
+                if (File::isDirectory($oldFile)) {
+                    File::deleteDirectory($oldFile);
+                }
+                if (File::isFile($oldFile)) {
+                    File::delete($oldFile);
+                }
+            }
+            foreach ($movedFiles as $file) {
+                File::move($rollbackFolder . $file, base_path($file));
+            }
             throw $e;
         }
+
+        Stache::refresh();
     }
 
     public function getBackupFilePath(string $backupName): string {
@@ -517,7 +511,28 @@ class BackupService
         return $backupFolder;
     }
 
-    public function cleanup(): void {
+    /**
+     * Backups and restores share the temp folder, so only one of them can run at a time.
+     */
+    private function withOperationLock(callable $callback): void {
+        $lock = Cache::lock('statamic-content-backup.operation', self::JOB_TIMEOUT);
+
+        if (!$lock->get()) {
+            throw new OperationInProgressException();
+        }
+
+        try {
+            // Leftovers of an operation whose worker died
+            $this->cleanup();
+
+            $callback();
+        } finally {
+            $this->cleanup();
+            $lock->release();
+        }
+    }
+
+    private function cleanup(): void {
         $tempFolder = $this->getTempFolder();
         if (File::exists($tempFolder)) {
             File::deleteDirectory($tempFolder);
