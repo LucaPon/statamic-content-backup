@@ -44,6 +44,8 @@ Once installed, the addon is available under **Utilities > Content Backup** in t
 
 You can customize which files and database tables are included in the backup by editing the configuration file located at: `config/statamic-content-backup.php`
 
+Restoring a backup brings the configured files and folders back exactly as they were when the backup was created, so files added since then are removed. Paths added to `include_files` after the backup was created are left untouched.
+
 ### Uploading large backups
 
 Backups are uploaded in chunks, so their size is not limited by PHP or the web server. Each chunk is 1 MB by default and must stay below `upload_max_filesize`, `post_max_size` and the web server body limit (e.g. nginx `client_max_body_size`). You can change it with the `upload_chunk_size` option.

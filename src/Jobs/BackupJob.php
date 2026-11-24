@@ -2,7 +2,6 @@
 
 namespace LucaPon\StatamicContentBackup\Jobs;
 
-use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,6 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use LucaPon\StatamicContentBackup\Http\Services\BackupService;
+use Throwable;
 
 class BackupJob implements ShouldQueue, ShouldBeUnique
 {
@@ -30,7 +30,7 @@ class BackupJob implements ShouldQueue, ShouldBeUnique
         $this->backupService->createBackup();
     }
 
-    public function failed(Exception $exception): void
+    public function failed(Throwable $exception): void
     {
         Cache::put('statamic-content-backup.backup_job_error', $exception->getMessage());
         $this->backupService->cleanup();

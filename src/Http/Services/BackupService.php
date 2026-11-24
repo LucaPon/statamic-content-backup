@@ -22,6 +22,7 @@ class BackupService
     private $uploadsFolderName = "uploads";
     private $databaseBasePath = 'database';
     private $filesBasePath = 'files';
+    private $manifestFileName = 'manifest.json';
 
     public function listBackups(): array {
         $backupFolder = $this->getBackupFolder();
@@ -118,6 +119,7 @@ class BackupService
 
         $this->backupFiles($zip, $includeFiles);
         $this->backupDatabaseTables($zip, $includeTables);
+        $zip->addFromString($this->manifestFileName, json_encode($this->buildManifest($includeFiles), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
         if (!$zip->close()) {
             throw new BackupCreationException('Error closing backup file');
@@ -164,6 +166,7 @@ class BackupService
 
     private function backupFiles($zip, $includeFiles): void {
         foreach ($includeFiles as $file) {
+            $file = $this->normalizePath($file);
             $filePath = base_path($file);
             if(File::exists($filePath)) {
                 $this->addToZip($filePath, $zip, $this->filesBasePath . $file);
@@ -171,6 +174,44 @@ class BackupService
                 Log::warning("File or directory not found: $filePath");
             }
         }
+    }
+
+    private function buildManifest(array $includeFiles): array {
+        $files = [];
+        foreach ($includeFiles as $file) {
+            $filePath = base_path($file);
+            $files[$this->normalizePath($file)] = File::isDirectory($filePath) ? 'directory' : (File::isFile($filePath) ? 'file' : 'missing');
+        }
+
+        return ['files' => $files];
+    }
+
+    /**
+     * Configured paths covered by the backup, restored exactly as they were (even when empty or missing).
+     * Backups created before the manifest existed only cover the paths they contain.
+     */
+    private function getRestorableFiles(string $tempFolder, array $includeFiles): array {
+        $manifestPath = $tempFolder . '/' . $this->manifestFileName;
+        $manifest = File::exists($manifestPath) ? json_decode(File::get($manifestPath), true) : null;
+
+        $files = [];
+        foreach ($includeFiles as $file) {
+            $file = $this->normalizePath($file);
+
+            if (is_array($manifest)) {
+                if (isset($manifest['files'][$file])) {
+                    $files[$file] = $manifest['files'][$file];
+                }
+            } elseif (File::exists($tempFolder . '/' . $this->filesBasePath . $file)) {
+                $files[$file] = null;
+            }
+        }
+
+        return $files;
+    }
+
+    private function normalizePath(string $file): string {
+        return '/' . trim($file, '/');
     }
 
     private function backupDatabaseTables($zip, $includeTables): void {
@@ -240,8 +281,8 @@ class BackupService
 
         $zip = new ZipArchive();
         $backupPath = $this->getBackupFilePath($backupName);
-        if(!$zip->open($backupPath)){
-            throw new \Exception('Error opening backup file');
+        if ($zip->open($backupPath) !== true) {
+            throw new InvalidBackupException('The backup file is not a valid zip archive');
         }
 
         try {
@@ -252,21 +293,35 @@ class BackupService
             $zip->extractTo($tempFolder);
             $zip->close();
 
-            foreach ($includeFiles as $file) {
-                $oldFile = base_path($file);
-                if (File::exists($oldFile)) {
-                    $rollbackPath = $rollbackFolder . $file;
-                    File::ensureDirectoryExists(dirname($rollbackPath));
-                    File::move($oldFile, $rollbackPath);
-                }
-            }
+            $restorableFiles = $this->getRestorableFiles($tempFolder, $includeFiles);
+            $movedFiles = [];
+            $replacedFiles = [];
 
             try {
-                foreach ($includeFiles as $file) {
-                    $tempFile = $tempFolder . '/' . $this->filesBasePath . '/' . $file;
+                foreach (array_keys($restorableFiles) as $file) {
                     $oldFile = base_path($file);
-                    if(File::exists($tempFile)) {
-                        File::move($tempFile, $oldFile);
+                    if (File::exists($oldFile)) {
+                        $rollbackPath = $rollbackFolder . $file;
+                        File::ensureDirectoryExists(dirname($rollbackPath));
+                        if (!File::move($oldFile, $rollbackPath)) {
+                            throw new \Exception("Error moving $file to the rollback folder");
+                        }
+                        $movedFiles[] = $file;
+                    }
+                }
+
+                foreach ($restorableFiles as $file => $type) {
+                    $tempFile = $tempFolder . '/' . $this->filesBasePath . $file;
+                    $oldFile = base_path($file);
+                    $replacedFiles[] = $file;
+
+                    if (File::exists($tempFile)) {
+                        File::ensureDirectoryExists(dirname($oldFile));
+                        if (!File::move($tempFile, $oldFile)) {
+                            throw new \Exception("Error restoring $file");
+                        }
+                    } elseif ($type === 'directory') {
+                        File::ensureDirectoryExists($oldFile);
                     }
                 }
 
@@ -276,19 +331,18 @@ class BackupService
                         DB::unprepared(File::get($tableDumpPath));
                     }
                 }
-            } catch (\Exception $e) {
-                foreach ($includeFiles as $file) {
-                    $rollbackPath = $rollbackFolder . $file;
+            } catch (\Throwable $e) {
+                foreach ($replacedFiles as $file) {
                     $oldFile = base_path($file);
-                    if (File::exists($rollbackPath)) {
-                        if (File::isDirectory($oldFile)) {
-                            File::deleteDirectory($oldFile);
-                        }
-                        if (File::isFile($oldFile)) {
-                            File::delete($oldFile);
-                        }
-                        File::move($rollbackPath, $oldFile);
+                    if (File::isDirectory($oldFile)) {
+                        File::deleteDirectory($oldFile);
                     }
+                    if (File::isFile($oldFile)) {
+                        File::delete($oldFile);
+                    }
+                }
+                foreach ($movedFiles as $file) {
+                    File::move($rollbackFolder . $file, base_path($file));
                 }
                 $this->cleanup();
                 throw $e;
@@ -298,7 +352,7 @@ class BackupService
 
             Stache::refresh();
 
-        }catch (\Exception $e) {
+        }catch (\Throwable $e) {
             $this->cleanup();
             throw $e;
         }
@@ -414,7 +468,7 @@ class BackupService
         $isBackup = false;
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $entry = $zip->getNameIndex($i);
-            if (str_starts_with($entry, $this->filesBasePath . '/') || str_starts_with($entry, $this->databaseBasePath . '/')) {
+            if ($entry === $this->manifestFileName || str_starts_with($entry, $this->filesBasePath . '/') || str_starts_with($entry, $this->databaseBasePath . '/')) {
                 $isBackup = true;
                 break;
             }
