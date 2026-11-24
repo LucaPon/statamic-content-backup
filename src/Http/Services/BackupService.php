@@ -3,9 +3,9 @@
 namespace LucaPon\StatamicContentBackup\Http\Services;
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Number;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupCreationException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupDeletionException;
@@ -264,6 +264,62 @@ class BackupService
         throw new UnsupportedDatabaseDriverException($databaseDriver);
     }
 
+    /**
+     * Imports the dump with the database client, which streams it instead of loading it in memory.
+     */
+    private function importDatabaseDump(string $dumpPath): void {
+        $connection = config()->get('database.connections.' . config()->get('database.default'));
+        $credentialsFile = tempnam(sys_get_temp_dir(), 'statamic-content-backup');
+        $environment = [];
+        $input = null;
+
+        try {
+            if ($connection['driver'] === 'mysql') {
+                File::put($credentialsFile, implode(PHP_EOL, [
+                    '[client]',
+                    "user = '{$connection['username']}'",
+                    "password = '{$connection['password']}'",
+                    "host = '{$connection['host']}'",
+                    "port = '{$connection['port']}'",
+                ]));
+                $command = ['mysql', '--defaults-extra-file=' . $credentialsFile, $connection['database']];
+                $input = fopen($dumpPath, 'rb');
+            } elseif ($connection['driver'] === 'pgsql') {
+                $escape = fn ($value) => str_replace(['\\', ':'], ['\\\\', '\\:'], (string) $value);
+                File::put($credentialsFile, implode(':', array_map($escape, [
+                    $connection['host'],
+                    $connection['port'],
+                    $connection['database'],
+                    $connection['username'],
+                    $connection['password'],
+                ])));
+                $environment['PGPASSFILE'] = $credentialsFile;
+                $command = [
+                    'psql', '--no-psqlrc', '--quiet', '--set', 'ON_ERROR_STOP=1',
+                    '--host', $connection['host'], '--port', (string) $connection['port'],
+                    '--username', $connection['username'], '--dbname', $connection['database'],
+                    '--file', $dumpPath,
+                ];
+            } elseif ($connection['driver'] === 'sqlite') {
+                $command = ['sqlite3', '-bail', $connection['database']];
+                $input = fopen($dumpPath, 'rb');
+            } else {
+                throw new UnsupportedDatabaseDriverException($connection['driver']);
+            }
+
+            $process = Process::timeout(self::JOB_TIMEOUT)->env($environment)->input($input)->run($command);
+
+            if ($process->failed()) {
+                throw new \Exception('Error importing ' . basename($dumpPath) . ': ' . trim($process->errorOutput()));
+            }
+        } finally {
+            if (is_resource($input)) {
+                fclose($input);
+            }
+            File::delete($credentialsFile);
+        }
+    }
+
     public function deleteBackup($backupName): void {
         $backupFolder = $this->getBackupFolder();
         $backupPath = $backupFolder . '/' . $backupName;
@@ -332,7 +388,7 @@ class BackupService
             foreach($includeTables as $table){
                 $tableDumpPath = $tempFolder . '/' . $this->databaseBasePath . '/' . $table . '.sql';
                 if(File::exists($tableDumpPath)) {
-                    DB::unprepared(File::get($tableDumpPath));
+                    $this->importDatabaseDump($tableDumpPath);
                 }
             }
         } catch (\Throwable $e) {
