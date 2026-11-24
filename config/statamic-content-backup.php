@@ -57,4 +57,19 @@ return [
 
     'backup_filename_format' => 'backup_{date}_{time}',
 
+    /*
+    |--------------------------------------------------------------------------
+    | Upload Chunk Size
+    |--------------------------------------------------------------------------
+    |
+    | Uploaded backups are sent in chunks of this size (in bytes), so files of
+    | any size can be uploaded regardless of the PHP and web server limits.
+    | Each chunk must stay below upload_max_filesize, post_max_size and the
+    | web server body limit (nginx client_max_body_size defaults to 1M).
+    | Bigger chunks mean fewer requests and faster uploads.
+    |
+    */
+
+    'upload_chunk_size' => 1000 * 1000,
+
 ];

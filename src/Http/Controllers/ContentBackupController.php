@@ -2,13 +2,14 @@
 
 namespace LucaPon\StatamicContentBackup\Http\Controllers;
 
+use LucaPon\StatamicContentBackup\Http\Exceptions\BackupWithSameNameException;
 use LucaPon\StatamicContentBackup\Jobs\BackupJob;
+use LucaPon\StatamicContentBackup\Jobs\RestoreJob;
 use LucaPon\StatamicContentBackup\Http\Requests\DeleteBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Requests\DownloadBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Requests\RestoreBackupRequest;
+use LucaPon\StatamicContentBackup\Http\Requests\UploadBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Services\BackupService;
-use Pion\Laravel\ChunkUpload\Exceptions\UploadMissingFileException;
-use Pion\Laravel\ChunkUpload\Receiver\FileReceiver;
 use Statamic\Http\Controllers\Controller;
 
 class ContentBackupController extends Controller
@@ -30,6 +31,7 @@ class ContentBackupController extends Controller
     public function getBackupJobStatus()
     {
         $status = $this->backupService->getBackupJobStatus();
+        $status['restore'] = $this->backupService->getRestoreJobStatus();
 
         return response()->json($status);
     }
@@ -60,61 +62,69 @@ class ContentBackupController extends Controller
 
     public function downloadBackup(DownloadBackupRequest $request)
     {
-
         $backupName = $request->input('name');
 
-        $backupFile = $this->backupService->getBackupFilePath($backupName) ;
+        $backupFile = $this->backupService->getBackupFilePath($backupName);
 
-        return response()->download($backupFile);
+        // On some platforms (e.g. Windows) the time limit also counts the time spent sending the file
+        @set_time_limit(0);
+
+        return response()->download($backupFile, $backupName, [
+            'Content-Type' => 'application/zip',
+        ]);
     }
 
-    public function uploadBackup(FileReceiver $receiver){
-
-        //chunk upload
-        if ($receiver->isUploaded() === false) {
-            throw new UploadMissingFileException();
+    public function uploadBackup(UploadBackupRequest $request)
+    {
+        // Checked on every chunk so a rejected upload stops before the whole file is sent
+        $backupName = $this->backupService->normalizeBackupName($request->file('file')->getClientOriginalName());
+        if ($this->backupService->checkBackupExists($backupName)) {
+            throw new BackupWithSameNameException($backupName);
         }
 
-        $received = $receiver->receive();
-        $handler = $received->handler();
+        $uploadId = $request->input('resumableIdentifier');
+        $chunkNumber = (int) $request->input('resumableChunkNumber');
+        $totalChunks = (int) $request->input('resumableTotalChunks');
 
-        if($handler->isFirstChunk()){
-            $file = $received->getFile()->getClientOriginalName();
-            if($this->backupService->checkBackupExists($file)){
-                $this->backupService->cleanUp();
-                return response()->json([
-                    "error" => "Backup with the same name already exists."
-                ], 400);
-            }
+        if ($chunkNumber === 1) {
+            $this->backupService->deleteStaleUploads();
         }
 
-        if ($received->isFinished()) {
+        $this->backupService->storeUploadChunk(
+            $uploadId,
+            $chunkNumber,
+            (int) $request->input('resumableChunkSize'),
+            $request->file('file')->getRealPath()
+        );
 
-            try {
-                $file = $received->getFile();
-                $this->backupService->saveUploadedBackup($file);
-            }
-            catch (\Exception $e) {
-                report($e);
-                $this->backupService->cleanUp();
-                return response()->json(['error' => 'Failed to save uploaded backup'], 500);
-            }
-
+        if ($chunkNumber < $totalChunks) {
+            return response()->json([
+                'progress' => (int) floor($chunkNumber / $totalChunks * 100),
+            ]);
         }
+
+        $this->backupService->completeUpload($uploadId, (int) $request->input('resumableTotalSize'), $backupName);
 
         return response()->json([
-            "progress" => $handler->getPercentageDone()
+            'progress' => 100,
+            'name' => $backupName,
         ]);
-
     }
 
     public function restoreBackup(RestoreBackupRequest $request)
     {
         $backupName = $request->input('name');
 
-        $this->backupService->restoreBackup($backupName);
+        $this->backupService->getBackupFilePath($backupName);
+        $this->backupService->markRestoreStarted($backupName);
 
-        return response()->json(['success' => 'Backup restored successfully']);
+        try {
+            RestoreJob::dispatch($backupName);
+        } catch (\Throwable $e) {
+            // With the sync queue the job runs right away: its failure is reported through the job status
+            report($e);
+        }
 
+        return response()->json(['status' => 'success']);
     }
 }

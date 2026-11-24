@@ -5,6 +5,7 @@
     <ui-header :title="__('Content Backup')" icon="package-box-crate">
       <ui-button
         :loading="creatingBackup || backupRunning"
+        :disabled="!!restoreRunning"
         variant="primary"
         icon="save"
         @click="createBackup"
@@ -114,6 +115,11 @@
                       icon-only
                       variant="subtle"
                       :loading="restoreRunning === backup.name"
+                      :disabled="
+                        creatingBackup ||
+                        backupRunning ||
+                        (!!restoreRunning && restoreRunning !== backup.name)
+                      "
                       :icon="restoreRunning === backup.name ? null : 'history'"
                       :aria-label="__('Restore')"
                       v-tooltip="__('Restore')"
@@ -155,6 +161,7 @@
 <script>
 import { defineComponent } from "vue";
 import { Head } from "@statamic/cms/inertia";
+import Resumable from "resumablejs";
 
 export default defineComponent({
   name: "Home",
@@ -171,6 +178,7 @@ export default defineComponent({
     downloadUrl: { type: String, required: true },
     uploadUrl: { type: String, required: true },
     restoreUrl: { type: String, required: true },
+    chunkSize: { type: Number, default: 1000 * 1000 },
   },
 
   data() {
@@ -183,11 +191,14 @@ export default defineComponent({
       uploadLoading: false,
       uploadProgress: 0,
       restoreRunning: null,
+      restoreStarting: false,
       statusInterval: null,
+      uploader: null,
     };
   },
 
   mounted() {
+    this.setupUploader();
     this.loadBackups();
     this.loadJobStatus();
 
@@ -197,6 +208,8 @@ export default defineComponent({
   },
 
   beforeUnmount() {
+    this.uploader?.cancel();
+
     if (this.statusInterval) {
       clearInterval(this.statusInterval);
       this.statusInterval = null;
@@ -226,6 +239,8 @@ export default defineComponent({
         if (!response.ok) throw new Error("Error retrieving job status");
 
         const data = await response.json();
+
+        this.handleRestoreStatus(data.restore || {});
 
         if (data.error) {
           this.runningBackupName = null;
@@ -264,7 +279,7 @@ export default defineComponent({
     },
 
     async createBackup() {
-      if (this.creatingBackup || this.backupRunning) return;
+      if (this.creatingBackup || this.backupRunning || this.restoreRunning) return;
 
       this.creatingBackup = true;
       this.backupRunning = true;
@@ -309,7 +324,12 @@ export default defineComponent({
     },
 
     downloadBackup(backupName) {
-      window.location.href = this.withBackupName(this.downloadUrl, backupName);
+      const link = document.createElement("a");
+      link.href = this.withBackupName(this.downloadUrl, backupName);
+      link.download = backupName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     },
 
     triggerUpload() {
@@ -317,62 +337,92 @@ export default defineComponent({
       this.$refs.uploadInput?.click();
     },
 
+    setupUploader() {
+      this.uploader = new Resumable({
+        target: this.uploadUrl,
+        headers: {
+          "X-CSRF-TOKEN": this.token,
+          "X-Requested-With": "XMLHttpRequest",
+          Accept: "application/json",
+        },
+        chunkSize: this.chunkSize,
+        // Otherwise the last chunk can be up to twice the chunk size and hit the server upload limits
+        forceChunkSize: true,
+        // The server rejects a chunk that follows a missing one, so chunks must be sent in order
+        simultaneousUploads: 1,
+        testChunks: false,
+        generateUniqueIdentifier: (file) => `${file.size}-${Date.now()}`,
+        maxChunkRetries: 5,
+        chunkRetryInterval: 2000,
+        permanentErrors: [400, 401, 403, 404, 405, 409, 413, 415, 419, 422, 500, 501],
+      });
+
+      // Chunks are created asynchronously, so the upload can only start once the file has been added
+      this.uploader.on("fileAdded", () => this.uploader.upload());
+
+      this.uploader.on("progress", () => {
+        this.uploadProgress = Math.floor(this.uploader.progress() * 100);
+      });
+
+      this.uploader.on("fileSuccess", (file, message) => {
+        const payload = this.parseUploadResponse(message);
+        if (payload.name) {
+          this.$toast.success("Backup uploaded successfully (" + payload.name + ")");
+        } else {
+          this.$toast.error(payload.error || "Error uploading backup");
+        }
+        this.finishUpload();
+      });
+
+      this.uploader.on("fileError", (file, message) => {
+        const payload = this.parseUploadResponse(message);
+        this.$toast.error(
+          payload.error || payload.message || "Error uploading backup",
+        );
+        this.finishUpload();
+      });
+    },
+
     handleUploadSelected(event) {
       const file = event?.target?.files?.[0];
+      if (event?.target) event.target.value = "";
       if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith(".zip")) {
+        this.$toast.error("Only .zip backups can be uploaded");
+        return;
+      }
+
+      if (!this.uploader?.support) {
+        this.$toast.error("Your browser does not support chunked uploads");
+        return;
+      }
 
       this.uploadLoading = true;
       this.uploadProgress = 0;
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("_token", this.token);
+      this.uploader.addFile(file);
+    },
 
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", this.uploadUrl, true);
-      xhr.setRequestHeader("X-CSRF-TOKEN", this.token);
-      xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+    finishUpload() {
+      this.uploader.cancel();
+      this.uploadLoading = false;
+      this.uploadProgress = 0;
+      this.loadBackups();
+    },
 
-      xhr.upload.onprogress = (progressEvent) => {
-        if (!progressEvent.lengthComputable) return;
-        this.uploadProgress = Math.floor(
-          (progressEvent.loaded / progressEvent.total) * 100,
-        );
-      };
-
-      xhr.onload = () => {
-        this.uploadLoading = false;
-        this.uploadProgress = 0;
-        this.loadBackups();
-
-        if (xhr.status >= 200 && xhr.status < 300) {
-          this.$toast.success("Backup uploaded successfully");
-          if (event?.target) event.target.value = "";
-          return;
-        }
-
-        let error = "Error uploading backup";
-        try {
-          const payload = JSON.parse(xhr.responseText || "{}");
-          error = payload.error || error;
-        } catch (_) {
-          // Keep fallback message when payload isn't JSON.
-        }
-        this.$toast.error(error);
-      };
-
-      xhr.onerror = () => {
-        this.uploadLoading = false;
-        this.uploadProgress = 0;
-        this.$toast.error("Error uploading backup");
-      };
-
-      xhr.send(formData);
+    parseUploadResponse(message) {
+      try {
+        return JSON.parse(message || "{}") || {};
+      } catch (_) {
+        // Non-JSON responses come from the web server (e.g. 413 from nginx)
+        return {};
+      }
     },
 
     async restoreBackup(backupName) {
-      if (this.restoreRunning) {
-        this.$toast.info("A restore is already running");
+      if (this.restoreRunning || this.creatingBackup || this.backupRunning) {
+        this.$toast.info("Another backup or restore is already running");
         return;
       }
 
@@ -385,6 +435,7 @@ export default defineComponent({
       }
 
       this.restoreRunning = backupName;
+      this.restoreStarting = true;
 
       try {
         const response = await fetch(
@@ -393,18 +444,45 @@ export default defineComponent({
             method: "POST",
             headers: {
               "X-CSRF-TOKEN": this.token,
+              Accept: "application/json",
             },
           },
         );
 
         if (!response.ok) throw new Error("Error restoring backup");
 
-        this.$toast.success("Backup restored successfully");
-        this.loadBackups();
+        await this.loadJobStatus();
       } catch (error) {
         console.error("Error restoring backup:", error);
         this.$toast.error("Error restoring backup");
+        this.restoreRunning = null;
       } finally {
+        this.restoreStarting = false;
+      }
+    },
+
+    handleRestoreStatus(status) {
+      if (status.error) {
+        this.restoreRunning = null;
+        this.$toast.error(status.error);
+        return;
+      }
+
+      if (status.success) {
+        this.restoreRunning = null;
+        this.$toast.success(
+          "Backup restored successfully (" + status.success + ")",
+        );
+        this.loadBackups();
+        return;
+      }
+
+      if (status.runningName) {
+        this.restoreRunning = status.runningName;
+        return;
+      }
+
+      if (!this.restoreStarting) {
         this.restoreRunning = null;
       }
     },

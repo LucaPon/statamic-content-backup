@@ -41,6 +41,7 @@ class ServiceProvider extends AddonServiceProvider
                         'downloadUrl' => cp_route('utilities.content-backup.download-backup'),
                         'uploadUrl' => cp_route('utilities.content-backup.upload-backup'),
                         'restoreUrl' => cp_route('utilities.content-backup.restore-backup'),
+                        'chunkSize' => (int) config('statamic-content-backup.upload_chunk_size', 1000 * 1000),
                     ];
                 })
                 ->routes(function () {
