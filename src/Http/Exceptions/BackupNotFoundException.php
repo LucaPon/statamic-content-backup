@@ -13,6 +13,6 @@ class BackupNotFoundException extends Exception
 
     public function render()
     {
-        return response()->json(['error' => $this->getMessage()], 500);
+        return response()->json(['error' => $this->getMessage()], 404);
     }
 }

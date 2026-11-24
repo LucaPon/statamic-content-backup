@@ -104,9 +104,16 @@ class BackupService
     private function generateBackupFilename(): string {
         $date = date('Ymd');
         $time = date('His');
-        $appName = env('APP_NAME');
+        $appName = config('app.name');
         $format = config('statamic-content-backup.backup_filename_format');
-        return str_replace(['{date}', '{time}', '{appName}'], [$date, $time, $appName], $format) . '.zip';
+        return $this->sanitizeFileName(str_replace(['{date}', '{time}', '{appName}'], [$date, $time, $appName], $format)) . '.zip';
+    }
+
+    private function sanitizeFileName(string $name): string {
+        // Keep in sync with the "name" validation rule of the backup requests
+        $name = preg_replace('/[^a-zA-Z0-9_\-\.]+/', '_', $name);
+
+        return trim($name, '_.');
     }
 
     private function backupFiles($zip, $includeFiles): void {
@@ -256,7 +263,7 @@ class BackupService
         $backupFilePath = $backupFolder . '/' . $backupName;
 
         if (!$this->checkBackupExists($backupName)) {
-            throw new BackupNotFoundException('Backup file not found: ' . $backupFilePath);
+            throw new BackupNotFoundException('Backup file not found: ' . $backupName);
         }
 
         return $backupFilePath;
