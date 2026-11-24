@@ -7,9 +7,17 @@
     "statamic/cms": "^6.0",
     "spatie/db-dumper": "^3.7"
   },
+  "require-dev": {
+    "orchestra/testbench": "^10.8 || ^11.0"
+  },
   "autoload": {
     "psr-4": {
       "LucaPon\\StatamicContentBackup\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "LucaPon\\StatamicContentBackup\\Tests\\": "tests"
     }
   },
   "extra": {
@@ -21,6 +29,14 @@
       "providers": [
         "LucaPon\\StatamicContentBackup\\ServiceProvider"
       ]
+    }
+  },
+  "scripts": {
+    "test": "phpunit"
+  },
+  "config": {
+    "allow-plugins": {
+      "pixelfear/composer-dist-plugin": true
     }
   }
 }

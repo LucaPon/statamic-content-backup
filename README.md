@@ -75,3 +75,16 @@ composer require lucapon/statamic-content-backup:^4.0
 ```
 
 **Permissions:** In v3, the addon used a custom permission (`statamic-content-backup-permission`). In v4, permissions are managed automatically by Statamic's utility system. The permission is now `access content_backup utility` and can be configured under **Users > Roles > Utilities** in the control panel.
+
+## Testing
+
+```bash
+composer install
+composer test
+```
+
+The tests use SQLite by default and need the `sqlite3` client. To run them against another database, set the `DB_*` environment variables:
+
+```bash
+DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_DATABASE=testing DB_USERNAME=root DB_PASSWORD= composer test
+```
