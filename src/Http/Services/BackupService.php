@@ -11,6 +11,7 @@ use LucaPon\StatamicContentBackup\Http\Exceptions\BackupCreationException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupDeletionException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupNotFoundException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupWithSameNameException;
+use LucaPon\StatamicContentBackup\Http\Exceptions\InvalidBackupException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\UnsupportedDatabaseDriverException;
 use Statamic\Facades\Stache;
 use ZipArchive;
@@ -18,6 +19,7 @@ use ZipArchive;
 class BackupService
 {
     private $tempFolderName = "temp";
+    private $uploadsFolderName = "uploads";
     private $databaseBasePath = 'database';
     private $filesBasePath = 'files';
 
@@ -107,6 +109,18 @@ class BackupService
         $appName = config('app.name');
         $format = config('statamic-content-backup.backup_filename_format');
         return $this->sanitizeFileName(str_replace(['{date}', '{time}', '{appName}'], [$date, $time, $appName], $format)) . '.zip';
+    }
+
+    public function normalizeBackupName(string $fileName): string {
+        $fileName = basename($fileName);
+
+        if (strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) !== 'zip') {
+            throw new InvalidBackupException('Only .zip backups can be uploaded');
+        }
+
+        $name = $this->sanitizeFileName(pathinfo($fileName, PATHINFO_FILENAME));
+
+        return ($name !== '' ? $name : 'backup_' . date('Ymd_His')) . '.zip';
     }
 
     private function sanitizeFileName(string $name): string {
@@ -276,15 +290,108 @@ class BackupService
         return File::exists($backupFilePath);
     }
 
-    public function saveUploadedBackup($file): string {
-        $backupFolder = $this->getBackupFolder();
-        $filePath = $backupFolder . '/' . $file->getClientOriginalName();
+    /**
+     * Writes the chunk at its offset, so a retried chunk overwrites itself and no final merge is needed.
+     */
+    public function storeUploadChunk(string $uploadId, int $chunkNumber, int $chunkSize, string $chunkPath): void {
+        $partialPath = $this->getPartialUploadPath($uploadId);
+        $offset = ($chunkNumber - 1) * $chunkSize;
 
-        if (!File::move($file->getRealPath(), $filePath)) {
+        clearstatcache(true, $partialPath);
+        $currentSize = File::exists($partialPath) ? File::size($partialPath) : 0;
+
+        if ($currentSize < $offset) {
+            File::delete($partialPath);
+            throw new InvalidBackupException('The upload is incomplete, please try again');
+        }
+
+        $source = fopen($chunkPath, 'rb');
+        $target = fopen($partialPath, 'cb');
+
+        try {
+            if (fseek($target, $offset) !== 0 || stream_copy_to_stream($source, $target) === false) {
+                throw new \Exception('Error writing uploaded chunk');
+            }
+        } finally {
+            fclose($source);
+            fclose($target);
+        }
+    }
+
+    public function completeUpload(string $uploadId, int $totalSize, string $backupName): void {
+        $partialPath = $this->getPartialUploadPath($uploadId);
+
+        try {
+            clearstatcache(true, $partialPath);
+            if (!File::exists($partialPath) || File::size($partialPath) !== $totalSize) {
+                throw new InvalidBackupException('The upload is incomplete, please try again');
+            }
+
+            $this->saveUploadedBackup($partialPath, $backupName);
+        } finally {
+            if (File::exists($partialPath)) {
+                File::delete($partialPath);
+            }
+        }
+    }
+
+    public function deleteStaleUploads(): void {
+        $threshold = now()->subDay()->getTimestamp();
+
+        foreach (File::files($this->getUploadsFolder()) as $file) {
+            if ($file->getMTime() < $threshold) {
+                File::delete($file->getPathname());
+            }
+        }
+    }
+
+    private function getPartialUploadPath(string $uploadId): string {
+        return $this->getUploadsFolder() . '/' . $uploadId . '.part';
+    }
+
+    private function getUploadsFolder(): string {
+        $uploadsFolder = $this->getBackupFolder() . '/' . $this->uploadsFolderName;
+        File::ensureDirectoryExists($uploadsFolder);
+
+        return $uploadsFolder;
+    }
+
+    public function saveUploadedBackup(string $sourcePath, string $backupName): string {
+        $this->assertValidBackupArchive($sourcePath);
+
+        if ($this->checkBackupExists($backupName)) {
+            throw new BackupWithSameNameException($backupName);
+        }
+
+        $filePath = $this->getBackupFolder() . '/' . $backupName;
+
+        if (!File::move($sourcePath, $filePath)) {
             throw new \Exception('Error saving uploaded backup file');
         }
 
         return $filePath;
+    }
+
+    private function assertValidBackupArchive(string $path): void {
+        $zip = new ZipArchive();
+        if ($zip->open($path, ZipArchive::RDONLY | ZipArchive::CHECKCONS) !== true) {
+            throw new InvalidBackupException('The uploaded file is not a valid zip archive');
+        }
+
+        // Only archives created by this addon contain these entries
+        $isBackup = false;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry = $zip->getNameIndex($i);
+            if (str_starts_with($entry, $this->filesBasePath . '/') || str_starts_with($entry, $this->databaseBasePath . '/')) {
+                $isBackup = true;
+                break;
+            }
+        }
+        $zip->close();
+
+        if (!$isBackup) {
+            throw new InvalidBackupException('The uploaded zip is not a content backup');
+        }
     }
 
     private function addToZip($file, $zip, $entryName = null): void {
@@ -327,11 +434,5 @@ class BackupService
         if (File::exists($tempFolder)) {
             File::deleteDirectory($tempFolder);
         }
-
-        $chunckFolder = storage_path('app/chunks');
-        if (File::exists($chunckFolder)) {
-            File::deleteDirectory($chunckFolder);
-        }
-
     }
 }

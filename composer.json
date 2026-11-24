@@ -5,8 +5,7 @@
   "require": {
     "ext-zip": "*",
     "statamic/cms": "^6.0",
-    "spatie/db-dumper": "^3.7",
-"pion/laravel-chunk-upload": "^1.5"
+    "spatie/db-dumper": "^3.7"
   },
   "autoload": {
     "psr-4": {

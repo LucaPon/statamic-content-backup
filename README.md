@@ -10,7 +10,7 @@ Statamic Content Backup is a Statamic addon that allows control panel users to c
 
 - Create and restore full content backups from the control panel
 - Back up database-stored content
-- Upload and download backup archives
+- Upload and download backup archives (large backups are uploaded in chunks)
 - Backup history with size and creation date
 - Background backup creation via Laravel queues
 
@@ -41,6 +41,12 @@ Once installed, the addon is available under **Utilities > Content Backup** in t
 ## Customization
 
 You can customize which files and database tables are included in the backup by editing the configuration file located at: `config/statamic-content-backup.php`
+
+### Uploading large backups
+
+Backups are uploaded in chunks, so their size is not limited by PHP or the web server. Each chunk is 1 MB by default and must stay below `upload_max_filesize`, `post_max_size` and the web server body limit (e.g. nginx `client_max_body_size`). You can change it with the `upload_chunk_size` option.
+
+Interrupted uploads older than 24 hours are deleted automatically when a new upload starts.
 
 ## Upgrading
 
