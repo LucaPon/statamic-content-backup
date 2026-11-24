@@ -16,7 +16,7 @@ class BackupJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 1200; // 20 minutes
+    public $timeout = 1200;
 
     protected BackupService $backupService;
 

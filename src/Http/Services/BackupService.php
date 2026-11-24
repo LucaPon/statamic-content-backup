@@ -27,7 +27,6 @@ class BackupService
         $files = File::files($backupFolder);
         $backups = [];
 
-        //order files by creation time, newest first
         usort($files, function ($a, $b) {
             return $b->getCTime() <=> $a->getCTime();
         });
@@ -200,7 +199,6 @@ class BackupService
             $zip->extractTo($tempFolder);
             $zip->close();
 
-            // Move original files to rollback folder
             foreach ($includeFiles as $file) {
                 $oldFile = base_path($file);
                 if (File::exists($oldFile)) {
@@ -210,7 +208,6 @@ class BackupService
                 }
             }
 
-            // Replace files with backup versions
             try {
                 foreach ($includeFiles as $file) {
                     $tempFile = $tempFolder . '/' . $this->filesBasePath . '/' . $file;
@@ -227,7 +224,6 @@ class BackupService
                     }
                 }
             } catch (\Exception $e) {
-                // Rollback: restore original files
                 foreach ($includeFiles as $file) {
                     $rollbackPath = $rollbackFolder . $file;
                     $oldFile = base_path($file);
@@ -247,7 +243,6 @@ class BackupService
 
             $this->cleanup();
 
-            //Refresh Statamic Stache
             Stache::refresh();
 
         }catch (\Exception $e) {
