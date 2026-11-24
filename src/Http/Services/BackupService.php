@@ -18,6 +18,8 @@ use ZipArchive;
 
 class BackupService
 {
+    public const JOB_TIMEOUT = 1200;
+
     private $tempFolderName = "temp";
     private $uploadsFolderName = "uploads";
     private $databaseBasePath = 'database';
@@ -82,16 +84,16 @@ class BackupService
     public function markRestoreStarted(string $backupName): void {
         Cache::forget('statamic-content-backup.restore_job_success');
         Cache::forget('statamic-content-backup.restore_job_error');
-        Cache::put('statamic-content-backup.restore_job_runningName', $backupName);
+        Cache::put('statamic-content-backup.restore_job_runningName', $backupName, self::JOB_TIMEOUT);
     }
 
     public function markRestoreSucceeded(string $backupName): void {
-        Cache::put('statamic-content-backup.restore_job_success', $backupName);
+        Cache::put('statamic-content-backup.restore_job_success', $backupName, now()->addDay());
         Cache::forget('statamic-content-backup.restore_job_runningName');
     }
 
     public function markRestoreFailed(string $error): void {
-        Cache::put('statamic-content-backup.restore_job_error', $error);
+        Cache::put('statamic-content-backup.restore_job_error', $error, now()->addDay());
         Cache::forget('statamic-content-backup.restore_job_runningName');
     }
 
@@ -100,7 +102,7 @@ class BackupService
         $backupFolder = $this->getBackupFolder();
         $finalBackupPath = $backupFolder . '/' . $backupFileName;
 
-        Cache::put('statamic-content-backup.backup_job_runningName', $backupFileName);
+        Cache::put('statamic-content-backup.backup_job_runningName', $backupFileName, self::JOB_TIMEOUT);
 
         if( $this->checkBackupExists($backupFileName) ) {
             throw new BackupWithSameNameException($backupFileName);
@@ -132,7 +134,7 @@ class BackupService
         $this->cleanup();
 
 
-        Cache::put('statamic-content-backup.backup_job_success', $backupFileName);
+        Cache::put('statamic-content-backup.backup_job_success', $backupFileName, now()->addDay());
         Cache::forget('statamic-content-backup.backup_job_runningName');
 
     }

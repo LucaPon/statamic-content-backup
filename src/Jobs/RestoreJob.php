@@ -15,7 +15,9 @@ class RestoreJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 1200;
+    public $timeout = BackupService::JOB_TIMEOUT;
+
+    public $uniqueFor = BackupService::JOB_TIMEOUT;
 
     protected BackupService $backupService;
 
