@@ -3,9 +3,11 @@
 namespace LucaPon\StatamicContentBackup\Http\Services;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Number;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupCreationException;
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupDeletionException;
@@ -265,6 +267,15 @@ class BackupService
     }
 
     /**
+     * MySQL dumps drop the table themselves, PostgreSQL and SQLite dumps don't.
+     */
+    private function dropTableBeforeImport(string $table): void {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            Schema::withoutForeignKeyConstraints(fn () => Schema::dropIfExists($table));
+        }
+    }
+
+    /**
      * Imports the dump with the database client, which streams it instead of loading it in memory.
      */
     private function importDatabaseDump(string $dumpPath): void {
@@ -388,6 +399,7 @@ class BackupService
             foreach($includeTables as $table){
                 $tableDumpPath = $tempFolder . '/' . $this->databaseBasePath . '/' . $table . '.sql';
                 if(File::exists($tableDumpPath)) {
+                    $this->dropTableBeforeImport($table);
                     $this->importDatabaseDump($tableDumpPath);
                 }
             }

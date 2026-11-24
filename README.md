@@ -44,7 +44,7 @@ Once installed, the addon is available under **Utilities > Content Backup** in t
 
 You can customize which files and database tables are included in the backup by editing the configuration file located at: `config/statamic-content-backup.php`
 
-Database tables are dumped and restored with the database command line tools (`mysqldump` and `mysql`, `pg_dump` and `psql`, or `sqlite3`), which must be installed on the server.
+Database tables are dumped and restored with the database command line tools (`mysqldump` and `mysql`, `pg_dump` and `psql`, or `sqlite3`), which must be installed on the server. With PostgreSQL, a table can't be restored while other tables have foreign keys pointing to it.
 
 Restoring a backup brings the configured files and folders back exactly as they were when the backup was created, so files added since then are removed. Paths added to `include_files` after the backup was created are left untouched.
 
