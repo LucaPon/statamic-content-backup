@@ -12,7 +12,7 @@ Statamic Content Backup is a Statamic addon that allows control panel users to c
 - Back up database-stored content
 - Upload and download backup archives (large backups are uploaded in chunks)
 - Backup history with size and creation date
-- Background backup creation via Laravel queues
+- Background backup creation and restore via Laravel queues
 
 ## Installation
 
@@ -28,11 +28,13 @@ After installation, publish the configuration file with:
 php artisan vendor:publish --tag=statamic-content-backup-config
 ```
 
-Run the following command to start the Laravel queue to handle backups creation in the background:
+Run the following command to start the Laravel queue to handle backups creation and restore in the background:
 
 ```bash
 php artisan queue:work
 ```
+
+Make sure `QUEUE_CONNECTION` is not set to `sync` (Statamic's default), otherwise backups are created and restored inside the HTTP request and large backups may hit your web server timeouts. Backup and restore jobs can run for up to 20 minutes, so set the `retry_after` value of your queue connection in `config/queue.php` higher than that (e.g. `1260`).
 
 ## Usage
 

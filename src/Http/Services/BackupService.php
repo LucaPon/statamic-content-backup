@@ -62,6 +62,38 @@ class BackupService
         return $status;
     }
 
+    public function getRestoreJobStatus(): array {
+        $status = [
+            'runningName' => Cache::get('statamic-content-backup.restore_job_runningName', null),
+            'success' => Cache::get('statamic-content-backup.restore_job_success', null),
+            'error' => Cache::get('statamic-content-backup.restore_job_error', null),
+        ];
+
+        if( $status['success'] || $status['error'] ) {
+            Cache::forget('statamic-content-backup.restore_job_runningName');
+            Cache::forget('statamic-content-backup.restore_job_success');
+            Cache::forget('statamic-content-backup.restore_job_error');
+        }
+
+        return $status;
+    }
+
+    public function markRestoreStarted(string $backupName): void {
+        Cache::forget('statamic-content-backup.restore_job_success');
+        Cache::forget('statamic-content-backup.restore_job_error');
+        Cache::put('statamic-content-backup.restore_job_runningName', $backupName);
+    }
+
+    public function markRestoreSucceeded(string $backupName): void {
+        Cache::put('statamic-content-backup.restore_job_success', $backupName);
+        Cache::forget('statamic-content-backup.restore_job_runningName');
+    }
+
+    public function markRestoreFailed(string $error): void {
+        Cache::put('statamic-content-backup.restore_job_error', $error);
+        Cache::forget('statamic-content-backup.restore_job_runningName');
+    }
+
     public function createBackup(): void {
         $backupFileName = $this->generateBackupFileName();
         $backupFolder = $this->getBackupFolder();

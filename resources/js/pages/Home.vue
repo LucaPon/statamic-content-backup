@@ -185,6 +185,7 @@ export default defineComponent({
       uploadLoading: false,
       uploadProgress: 0,
       restoreRunning: null,
+      restoreStarting: false,
       statusInterval: null,
       uploader: null,
     };
@@ -232,6 +233,8 @@ export default defineComponent({
         if (!response.ok) throw new Error("Error retrieving job status");
 
         const data = await response.json();
+
+        this.handleRestoreStatus(data.restore || {});
 
         if (data.error) {
           this.runningBackupName = null;
@@ -426,6 +429,7 @@ export default defineComponent({
       }
 
       this.restoreRunning = backupName;
+      this.restoreStarting = true;
 
       try {
         const response = await fetch(
@@ -434,18 +438,45 @@ export default defineComponent({
             method: "POST",
             headers: {
               "X-CSRF-TOKEN": this.token,
+              Accept: "application/json",
             },
           },
         );
 
         if (!response.ok) throw new Error("Error restoring backup");
 
-        this.$toast.success("Backup restored successfully");
-        this.loadBackups();
+        await this.loadJobStatus();
       } catch (error) {
         console.error("Error restoring backup:", error);
         this.$toast.error("Error restoring backup");
+        this.restoreRunning = null;
       } finally {
+        this.restoreStarting = false;
+      }
+    },
+
+    handleRestoreStatus(status) {
+      if (status.error) {
+        this.restoreRunning = null;
+        this.$toast.error(status.error);
+        return;
+      }
+
+      if (status.success) {
+        this.restoreRunning = null;
+        this.$toast.success(
+          "Backup restored successfully (" + status.success + ")",
+        );
+        this.loadBackups();
+        return;
+      }
+
+      if (status.runningName) {
+        this.restoreRunning = status.runningName;
+        return;
+      }
+
+      if (!this.restoreStarting) {
         this.restoreRunning = null;
       }
     },

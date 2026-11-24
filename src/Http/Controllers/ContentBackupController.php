@@ -4,6 +4,7 @@ namespace LucaPon\StatamicContentBackup\Http\Controllers;
 
 use LucaPon\StatamicContentBackup\Http\Exceptions\BackupWithSameNameException;
 use LucaPon\StatamicContentBackup\Jobs\BackupJob;
+use LucaPon\StatamicContentBackup\Jobs\RestoreJob;
 use LucaPon\StatamicContentBackup\Http\Requests\DeleteBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Requests\DownloadBackupRequest;
 use LucaPon\StatamicContentBackup\Http\Requests\RestoreBackupRequest;
@@ -30,6 +31,7 @@ class ContentBackupController extends Controller
     public function getBackupJobStatus()
     {
         $status = $this->backupService->getBackupJobStatus();
+        $status['restore'] = $this->backupService->getRestoreJobStatus();
 
         return response()->json($status);
     }
@@ -113,9 +115,16 @@ class ContentBackupController extends Controller
     {
         $backupName = $request->input('name');
 
-        $this->backupService->restoreBackup($backupName);
+        $this->backupService->getBackupFilePath($backupName);
+        $this->backupService->markRestoreStarted($backupName);
 
-        return response()->json(['success' => 'Backup restored successfully']);
+        try {
+            RestoreJob::dispatch($backupName);
+        } catch (\Throwable $e) {
+            // With the sync queue the job runs right away: its failure is reported through the job status
+            report($e);
+        }
 
+        return response()->json(['status' => 'success']);
     }
 }
